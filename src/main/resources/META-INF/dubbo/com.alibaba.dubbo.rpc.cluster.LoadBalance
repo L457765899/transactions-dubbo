@@ -1,0 +1,4 @@
+sticky_random = com.sxb.lin.atomikos.dubbo.balance.StickyRandomLoadBalance
+sticky_roundrobin = com.sxb.lin.atomikos.dubbo.balance.StickyRoundRobinLoadBalance
+sticky_leastactive = com.sxb.lin.atomikos.dubbo.balance.StickyLeastActiveLoadBalance
+sticky_consistenthash = com.sxb.lin.atomikos.dubbo.balance.StickyConsistentHashLoadBalance
