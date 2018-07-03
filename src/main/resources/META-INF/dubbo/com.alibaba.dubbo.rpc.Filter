@@ -1,1 +1,1 @@
-XATransactionFilter=com.alibaba.dubbo.rpc.Filter.XATransactionFilter
+XATransactionFilter=com.sxb.lin.atomikos.dubbo.filter.XATransactionFilter

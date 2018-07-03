@@ -9,11 +9,10 @@ import com.alibaba.dubbo.rpc.cluster.loadbalance.LeastActiveLoadBalance;
 
 public class StickyLeastActiveLoadBalance extends LeastActiveLoadBalance{
 
+	private StickySelect stickySelect = new StickySelect();
+
 	@Override
 	public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) {
-		// TODO Auto-generated method stub
-		return super.select(invokers, url, invocation);
+		return stickySelect.select(invokers, super.select(invokers, url, invocation));
 	}
-
-	
 }

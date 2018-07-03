@@ -4,7 +4,7 @@ import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
-public class XAResourceImpl implements XAResource{
+public class DubboXAResourceServiceImpl implements XAResource{
 
 	public void commit(Xid xid, boolean onePhase) throws XAException {
 		// TODO Auto-generated method stub
