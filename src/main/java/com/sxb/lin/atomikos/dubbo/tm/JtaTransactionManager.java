@@ -3,17 +3,18 @@ package com.sxb.lin.atomikos.dubbo.tm;
 import javax.transaction.NotSupportedException;
 import javax.transaction.SystemException;
 
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.jta.JtaTransactionObject;
-import org.springframework.util.StringUtils;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 
 import com.alibaba.dubbo.rpc.RpcContext;
 import com.atomikos.icatch.CompositeTransaction;
 import com.atomikos.icatch.CompositeTransactionManager;
 import com.atomikos.icatch.config.Configuration;
+import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.LocalConfig;
-import com.sxb.lin.atomikos.dubbo.XATransactionLocal;
-import com.sxb.lin.atomikos.dubbo.filter.XATransactionFilter;
+import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
 
 
 public class JtaTransactionManager extends org.springframework.transaction.jta.JtaTransactionManager{
@@ -25,21 +26,20 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 			throws NotSupportedException,SystemException {
 		
 		if(LocalConfig.getProtocolPort() == null){
-			throw new NotSupportedException("@LocalConfig must be set protocol port.");
+			throw new CannotCreateTransactionException("@LocalConfig must be set protocol port.");
 		}
 		
-		RpcContext context = RpcContext.getContext();
-		String tmAddress = context.getAttachment(XATransactionFilter.XA_TM_ADDRESS_KEY);
-		String tid = context.getAttachment(XATransactionFilter.XA_TID_KEY);
-		if(StringUtils.isEmpty(tmAddress) && StringUtils.isEmpty(tid)){
+		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
+		if(current == null){
 			super.doJtaBegin(txObject, definition);
 			
+			RpcContext context = RpcContext.getContext();
 			CompositeTransactionManager compositeTransactionManager = Configuration.getCompositeTransactionManager();
 			CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction();
 			String localHost = context.getLocalHost();
-			tid = compositeTransaction.getTid();
+			String tid = compositeTransaction.getTid();
 			
-			XATransactionLocal local = new XATransactionLocal();
+			InitiatorXATransactionLocal local = new InitiatorXATransactionLocal();
 			local.setTid(tid);
 			local.setTmAddress(localHost + ":" + LocalConfig.getProtocolPort());
 			local.bindToThread();
@@ -47,9 +47,50 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 			if(definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED){
 				throw new NotSupportedException("dubbo xa transaction not supported PROPAGATION_NESTED.");
 			}
-			//调用发起者tm
+			if(definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW){
+				throw new NotSupportedException("dubbo xa transaction not supported PROPAGATION_REQUIRES_NEW.");
+			}
+			
+			
+			//调用发起者tm,xa start
 		}
 		
 	}
 
+	@Override
+	protected void doCommit(DefaultTransactionStatus status) {
+		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
+		if(current == null){
+			try {
+				super.doCommit(status);
+			} finally {
+				this.restoreThreadLocalStatus();
+			}
+		}else{
+			//xa end
+			
+			//有可能不会执行xa end,在xa prepare之前先判断是否xa end
+		}
+	}
+
+	@Override
+	protected void doRollback(DefaultTransactionStatus status) {
+		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
+		if(current == null){
+			try {
+				super.doRollback(status);
+			} finally {
+				this.restoreThreadLocalStatus();
+			}
+		}else{
+			//xa end
+		}
+	}
+
+	private void restoreThreadLocalStatus(){
+		InitiatorXATransactionLocal current = InitiatorXATransactionLocal.current();
+		if(current != null){
+			current.restoreThreadLocalStatus();
+		}
+	}
 }

@@ -3,11 +3,11 @@ package com.sxb.lin.atomikos.dubbo;
 
 
 
-public class XATransactionLocal {
+public class InitiatorXATransactionLocal {
 
-	private final static ThreadLocal<XATransactionLocal> CURRENT_LOCAL = new ThreadLocal<XATransactionLocal>();
+	private final static ThreadLocal<InitiatorXATransactionLocal> CURRENT_LOCAL = new ThreadLocal<InitiatorXATransactionLocal>();
 	
-	public static XATransactionLocal current() {
+	public static InitiatorXATransactionLocal current() {
         return CURRENT_LOCAL.get();
     }
 	
@@ -15,7 +15,7 @@ public class XATransactionLocal {
 		
 	}
     
-    private XATransactionLocal oldXATransactionLocal;
+    private InitiatorXATransactionLocal oldXATransactionLocal;
     
     private String tid;
     

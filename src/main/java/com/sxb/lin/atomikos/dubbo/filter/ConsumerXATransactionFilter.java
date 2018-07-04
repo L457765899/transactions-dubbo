@@ -6,21 +6,18 @@ import com.alibaba.dubbo.rpc.Invoker;
 import com.alibaba.dubbo.rpc.Result;
 import com.alibaba.dubbo.rpc.RpcContext;
 import com.alibaba.dubbo.rpc.RpcException;
-import com.sxb.lin.atomikos.dubbo.XATransactionLocal;
+import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
+import com.sxb.lin.atomikos.dubbo.LocalConfig;
 
-public class XATransactionFilter implements Filter {
-	
-	public final static String XA_TM_ADDRESS_KEY = "xaTmAddress";
-	
-	public final static String XA_TID_KEY = "xaTid";
+public class ConsumerXATransactionFilter implements Filter {
 
 	public Result invoke(Invoker<?> invoker, Invocation invocation)throws RpcException {
 		
-		XATransactionLocal current = XATransactionLocal.current();
+		InitiatorXATransactionLocal current = InitiatorXATransactionLocal.current();
 		if(current != null){
 			RpcContext context = RpcContext.getContext();
-			context.setAttachment(XA_TM_ADDRESS_KEY,current.getTmAddress());
-			context.setAttachment(XA_TID_KEY, current.getTid());
+			context.setAttachment(LocalConfig.XA_TM_ADDRESS_KEY,current.getTmAddress());
+			context.setAttachment(LocalConfig.XA_TID_KEY, current.getTid());
 		}
 		
 		return invoker.invoke(invocation);
