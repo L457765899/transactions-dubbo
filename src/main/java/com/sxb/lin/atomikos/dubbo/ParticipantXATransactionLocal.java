@@ -2,7 +2,7 @@ package com.sxb.lin.atomikos.dubbo;
 
 public class ParticipantXATransactionLocal {
 
-	private final static ThreadLocal<ParticipantXATransactionLocal> CURRENT_LOCAL = new InheritableThreadLocal<ParticipantXATransactionLocal>();
+	private final static ThreadLocal<ParticipantXATransactionLocal> CURRENT_LOCAL = new ThreadLocal<ParticipantXATransactionLocal>();
 	
 	public static ParticipantXATransactionLocal current() {
         return CURRENT_LOCAL.get();
