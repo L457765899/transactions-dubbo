@@ -13,6 +13,6 @@ public class StickyLeastActiveLoadBalance extends LeastActiveLoadBalance{
 
 	@Override
 	public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) {
-		return stickySelect.select(invokers, super.select(invokers, url, invocation));
+		return stickySelect.select(invokers, super.select(invokers, url, invocation), invocation);
 	}
 }

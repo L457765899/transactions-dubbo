@@ -6,14 +6,17 @@ import com.atomikos.datasource.ResourceException;
 import com.atomikos.datasource.xa.XATransactionalResource;
 
 public class DubboXATransactionalResource extends XATransactionalResource{
+	
+	private String remoteAddress;
 
-	public DubboXATransactionalResource(String servername) {
+	public DubboXATransactionalResource(String servername,String remoteAddress) {
 		super(servername);
+		this.remoteAddress = remoteAddress;
 	}
 
 	@Override
 	protected synchronized XAResource refreshXAConnection() throws ResourceException {
-		return null;
+		return new DubboXAResourceImpl(remoteAddress);
 	}
 
 }

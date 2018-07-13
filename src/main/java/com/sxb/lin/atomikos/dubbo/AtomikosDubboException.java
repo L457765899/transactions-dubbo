@@ -1,6 +1,6 @@
 package com.sxb.lin.atomikos.dubbo;
 
-public class AtomikosDubboException extends Exception{
+public class AtomikosDubboException extends RuntimeException{
 
 	
 	private static final long serialVersionUID = 1L;

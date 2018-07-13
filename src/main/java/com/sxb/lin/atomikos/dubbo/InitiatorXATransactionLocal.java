@@ -3,33 +3,20 @@ package com.sxb.lin.atomikos.dubbo;
 
 
 
+
 public class InitiatorXATransactionLocal {
 
-	private final static ThreadLocal<InitiatorXATransactionLocal> CURRENT_LOCAL = new ThreadLocal<InitiatorXATransactionLocal>();
+	private final static ThreadLocal<InitiatorXATransactionLocal> CURRENT_LOCAL = new InheritableThreadLocal<InitiatorXATransactionLocal>();
 	
 	public static InitiatorXATransactionLocal current() {
         return CURRENT_LOCAL.get();
     }
-	
-	public void suspend(){
-		
-	}
     
     private InitiatorXATransactionLocal oldXATransactionLocal;
     
     private String tid;
     
-    private String invokeAddress;
-    
     private String tmAddress;
-
-	public String getInvokeAddress() {
-		return invokeAddress;
-	}
-
-	public void setInvokeAddress(String invokeAddress) {
-		this.invokeAddress = invokeAddress;
-	}
 
 	public String getTmAddress() {
 		return tmAddress;
