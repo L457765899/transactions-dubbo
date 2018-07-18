@@ -18,6 +18,8 @@ public class XASpringManagedTransaction extends SpringManagedTransaction{
 	
 	private XADataSource xaDataSource;
 	
+	private XAConnectionHolder xaConnectionHolder;
+	
 	private XAConnection xaConnection;
 	
 	private Connection connection;
@@ -43,8 +45,7 @@ public class XASpringManagedTransaction extends SpringManagedTransaction{
 
 	@Override
 	public Connection getConnection() throws SQLException {
-		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
-		if(current == null){
+		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			return super.getConnection();
 		}else{
 			if(connection == null){
@@ -55,34 +56,35 @@ public class XASpringManagedTransaction extends SpringManagedTransaction{
 	}
 	
 	private void openConnection() throws SQLException {
-		this.xaConnection = XADataSourceUtils.getXAConnection(xaDataSource);
+		this.xaConnectionHolder = XADataSourceUtils.getXAConnection(xaDataSource);
+		this.xaConnection = this.xaConnectionHolder.getXaConnection();
 		this.connection = this.xaConnection.getConnection();
 		this.xaResource = this.xaConnection.getXAResource();
+		//xa start
+		
 	}
 
 	@Override
 	public void commit() throws SQLException {
-		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
-		if(current == null){
+		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			super.commit();
 		}
 	}
 
 	@Override
 	public void rollback() throws SQLException {
-		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
-		if(current == null){
+		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			super.rollback();
 		}
 	}
 
 	@Override
 	public void close() throws SQLException {
-		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
-		if(current == null){
+		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			super.close();
 		}else{
-			
+			//xa end
+			//XADataSourceUtils.releaseConnection(this.xaConnection, this.xaDataSource);
 		}
 	}
 

@@ -8,7 +8,18 @@ public class ParticipantXATransactionLocal {
         return CURRENT_LOCAL.get();
     }
 	
+	public static boolean isUseParticipantXATransaction(){
+		ParticipantXATransactionLocal current = current();
+		if(current != null && current.isActive()){
+			return true;
+		}else{
+			return false;
+		}
+	}
+	
 	private ParticipantXATransactionLocal oldXATransactionLocal;
+	
+	private Boolean isActive;
 	
 	private String tid;
     
@@ -29,7 +40,17 @@ public class ParticipantXATransactionLocal {
 	public void setTmAddress(String tmAddress) {
 		this.tmAddress = tmAddress;
 	}
-    
+	
+	public Boolean getIsActive() {
+		return isActive;
+	}
+
+	public void active() {
+		if(this.isActive == null){
+			this.isActive = true;
+		}
+	}
+
 	public void bindToThread(){
 		oldXATransactionLocal = CURRENT_LOCAL.get();
 		CURRENT_LOCAL.set(this);
@@ -37,5 +58,12 @@ public class ParticipantXATransactionLocal {
 	
 	public void restoreThreadLocalStatus(){
 		CURRENT_LOCAL.set(oldXATransactionLocal);
+	}
+	
+	public boolean isActive(){
+		if(this.isActive == null){
+			this.isActive = false;
+		}
+		return isActive;
 	}
 }

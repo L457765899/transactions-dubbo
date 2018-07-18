@@ -1,1 +1,2 @@
-XATransactionFilter=com.sxb.lin.atomikos.dubbo.filter.XATransactionFilter
+consumerXATransactionFilter=com.sxb.lin.atomikos.dubbo.filter.ConsumerXATransactionFilter
+providerXATransactionFilter=com.sxb.lin.atomikos.dubbo.filter.ProviderXATransactionFilter

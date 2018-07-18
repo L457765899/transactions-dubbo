@@ -23,27 +23,25 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 	protected void doJtaBegin(JtaTransactionObject txObject, TransactionDefinition definition) 
 			throws NotSupportedException,SystemException {
 		
-		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
 		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
 		if(current == null){
 			super.doJtaBegin(txObject, definition);
-			
-			CompositeTransactionManager compositeTransactionManager = Configuration.getCompositeTransactionManager();
-			CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction();
-			
-			String tid = compositeTransaction.getTid();
-			
-			InitiatorXATransactionLocal local = new InitiatorXATransactionLocal();
-			local.setTid(tid);
-			local.setTmAddress(instance.getLocalAddress());
-			local.bindToThread();
+			this.newInitiatorXATransactionLocal();
 		}else{
+			if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
+				super.doJtaBegin(txObject, definition);
+				this.newInitiatorXATransactionLocal();
+				return;
+			}
+			
 			if(definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED){
 				throw new NotSupportedException("dubbo xa transaction not supported PROPAGATION_NESTED.");
 			}
 			if(definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW){
 				throw new NotSupportedException("dubbo xa transaction not supported PROPAGATION_REQUIRES_NEW.");
 			}
+			current.active();
+			
 			
 //			//调用发起者tm,xa start
 //			try {
@@ -56,34 +54,39 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 		}
 		
 	}
-
+	
+	protected void newInitiatorXATransactionLocal() {
+		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
+		CompositeTransactionManager compositeTransactionManager = Configuration.getCompositeTransactionManager();
+		CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction();
+		
+		String tid = compositeTransaction.getTid();
+		
+		InitiatorXATransactionLocal local = new InitiatorXATransactionLocal();
+		local.setTid(tid);
+		local.setTmAddress(instance.getLocalAddress());
+		local.bindToThread();
+	}
+	
 	@Override
 	protected void doCommit(DefaultTransactionStatus status) {
-		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
-		if(current == null){
+		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			try {
 				super.doCommit(status);
 			} finally {
 				this.restoreThreadLocalStatus();
 			}
-		}else{
-			//xa end
-			
-			//有可能不会执行xa end,在xa prepare之前先判断是否xa end
 		}
 	}
 
 	@Override
 	protected void doRollback(DefaultTransactionStatus status) {
-		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
-		if(current == null){
+		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			try {
 				super.doRollback(status);
 			} finally {
 				this.restoreThreadLocalStatus();
 			}
-		}else{
-			//xa end
 		}
 	}
 
