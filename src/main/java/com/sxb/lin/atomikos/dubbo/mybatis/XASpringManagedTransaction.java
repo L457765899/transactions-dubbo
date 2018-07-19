@@ -6,7 +6,6 @@ import java.sql.SQLException;
 import javax.sql.DataSource;
 import javax.sql.XAConnection;
 import javax.sql.XADataSource;
-import javax.transaction.xa.XAResource;
 
 import org.mybatis.spring.transaction.SpringManagedTransaction;
 
@@ -23,8 +22,6 @@ public class XASpringManagedTransaction extends SpringManagedTransaction{
 	private XAConnection xaConnection;
 	
 	private Connection connection;
-	
-	private XAResource xaResource;
 	
 	private String dubboUniqueResourceName;
 
@@ -56,12 +53,9 @@ public class XASpringManagedTransaction extends SpringManagedTransaction{
 	}
 	
 	private void openConnection() throws SQLException {
-		this.xaConnectionHolder = XADataSourceUtils.getXAConnection(xaDataSource);
+		this.xaConnectionHolder = XADataSourceUtils.getXAConnection(xaDataSource,dubboUniqueResourceName);
 		this.xaConnection = this.xaConnectionHolder.getXaConnection();
-		this.connection = this.xaConnection.getConnection();
-		this.xaResource = this.xaConnection.getXAResource();
-		//xa start
-		
+		this.connection = this.xaConnectionHolder.getConnection();
 	}
 
 	@Override
@@ -83,8 +77,7 @@ public class XASpringManagedTransaction extends SpringManagedTransaction{
 		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			super.close();
 		}else{
-			//xa end
-			//XADataSourceUtils.releaseConnection(this.xaConnection, this.xaDataSource);
+			XADataSourceUtils.releaseConnection(this.xaConnection, this.xaDataSource);
 		}
 	}
 

@@ -4,6 +4,7 @@ import java.sql.SQLException;
 
 import javax.sql.XAConnection;
 import javax.sql.XADataSource;
+import javax.transaction.xa.XAException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -16,34 +17,33 @@ public abstract class XADataSourceUtils {
 	
 	private static final Log logger = LogFactory.getLog(XADataSourceUtils.class);
 
-	public static XAConnectionHolder getXAConnection(XADataSource xaDataSource) throws SQLException{
-		return doGetXAConnection(xaDataSource);
+	public static XAConnectionHolder getXAConnection(XADataSource xaDataSource,
+			String dubboUniqueResourceName) throws SQLException{
+		return doGetXAConnection(xaDataSource,dubboUniqueResourceName);
 	}
 	
-	public static XAConnectionHolder doGetXAConnection(XADataSource xaDataSource) throws SQLException{
+	public static XAConnectionHolder doGetXAConnection(XADataSource xaDataSource,
+			String dubboUniqueResourceName) throws SQLException{
 		Assert.notNull(xaDataSource, "No XADataSource specified");
 		
 		XAConnectionHolder conHolder = (XAConnectionHolder) TransactionSynchronizationManager.getResource(xaDataSource);
 		if (conHolder != null && conHolder.hasXAConnection()) {
 			conHolder.requested();
-			if (!conHolder.hasXAConnection()) {
-				conHolder.setXaConnection(xaDataSource.getXAConnection());
-			}
 			return conHolder;
 		}
 		
 		XAConnection xaConnection = xaDataSource.getXAConnection();
 		XAConnectionHolder holderToUse = conHolder;
 		if (holderToUse == null) {
-			holderToUse = new XAConnectionHolder(xaConnection);
+			holderToUse = new XAConnectionHolder(xaConnection,dubboUniqueResourceName);
 		}else {
-			holderToUse.setXaConnection(xaConnection);
+			holderToUse.setXaConnection(xaConnection,dubboUniqueResourceName);
 		}
 		holderToUse.requested();
-		TransactionSynchronizationManager.registerSynchronization(
-				new XAConnectionSynchronization(holderToUse, xaDataSource));
-		holderToUse.setSynchronizedWithTransaction(true);
+		
 		if (holderToUse != conHolder) {
+			TransactionSynchronizationManager.registerSynchronization(
+					new XAConnectionSynchronization(holderToUse, xaDataSource));
 			TransactionSynchronizationManager.bindResource(xaDataSource, holderToUse);
 		}
 		
@@ -73,11 +73,13 @@ public abstract class XADataSourceUtils {
 				return;
 			}
 		}
-		doCloseConnection(xaConnection);
 	}
 	
-	public static void doCloseConnection(XAConnection xaConnection) throws SQLException{
-		xaConnection.close();
+	public static void closeConnection(XAConnectionHolder connectionHolder) throws XAException{
+		if(connectionHolder != null){
+			connectionHolder.end();
+			//add to pool
+		}
 	}
 	
 	private static boolean connectionEquals(XAConnectionHolder conHolder,XAConnection xaConnection){
@@ -115,6 +117,11 @@ public abstract class XADataSourceUtils {
 				this.holderActive = false;
 				if (this.connectionHolder.hasXAConnection()) {
 					releaseConnection(this.connectionHolder.getXaConnection(), this.xaDataSource);
+					try {
+						closeConnection(this.connectionHolder);
+					} catch (XAException e) {
+						logger.error(e.getMessage(), e);
+					}
 				}
 			}
 		}
@@ -126,7 +133,14 @@ public abstract class XADataSourceUtils {
 				this.holderActive = false;
 				if (this.connectionHolder.hasXAConnection()) {
 					releaseConnection(this.connectionHolder.getXaConnection(), this.xaDataSource);
-					this.connectionHolder.setXaConnection(null);
+					try {
+						closeConnection(this.connectionHolder);
+						this.connectionHolder.setXaConnection(null,null);
+					} catch (SQLException e) {
+						logger.error(e.getMessage(), e);
+					} catch (XAException e) {
+						logger.error(e.getMessage(), e);
+					}
 				}
 			}
 			this.connectionHolder.reset();

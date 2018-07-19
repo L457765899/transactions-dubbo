@@ -18,7 +18,7 @@ import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
 public class JtaTransactionManager extends org.springframework.transaction.jta.JtaTransactionManager{
 
 	private static final long serialVersionUID = 1L;
-	
+
 	@Override
 	protected void doJtaBegin(JtaTransactionObject txObject, TransactionDefinition definition) 
 			throws NotSupportedException,SystemException {
@@ -41,16 +41,6 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 				throw new NotSupportedException("dubbo xa transaction not supported PROPAGATION_REQUIRES_NEW.");
 			}
 			current.active();
-			
-			
-//			//调用发起者tm,xa start
-//			try {
-//				StartXid startXid = instance.enlistResource(current.getTmAddress(), current.getTid(), 
-//						instance.getLocalAddress(), dubboUniqueResourceName);
-//				
-//			} catch (RollbackException e) {
-//				throw new CannotCreateTransactionException("transaction manager is STATUS_ROLLING_BACK.",e);
-//			}
 		}
 		
 	}
