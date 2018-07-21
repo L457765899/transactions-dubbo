@@ -11,6 +11,12 @@ public class StartXid implements Serializable{
 	private Xid xid;
 	
 	private int flags;
+	
+	private long startTime;
+	
+	private long timeout;
+	
+	private String tmAddress;
 
 	public Xid getXid() {
 		return xid;
@@ -26,6 +32,30 @@ public class StartXid implements Serializable{
 
 	public void setFlags(int flags) {
 		this.flags = flags;
+	}
+
+	public long getStartTime() {
+		return startTime;
+	}
+
+	public void setStartTime(long startTime) {
+		this.startTime = startTime;
+	}
+
+	public long getTimeout() {
+		return timeout;
+	}
+
+	public void setTimeout(long timeout) {
+		this.timeout = timeout;
+	}
+
+	public String getTmAddress() {
+		return tmAddress;
+	}
+
+	public void setTmAddress(String tmAddress) {
+		this.tmAddress = tmAddress;
 	}
 
 }

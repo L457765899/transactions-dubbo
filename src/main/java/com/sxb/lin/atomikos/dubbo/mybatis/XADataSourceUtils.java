@@ -77,8 +77,7 @@ public abstract class XADataSourceUtils {
 	
 	public static void closeConnection(XAConnectionHolder connectionHolder) throws XAException{
 		if(connectionHolder != null){
-			connectionHolder.end();
-			//add to pool
+			connectionHolder.close();
 		}
 	}
 	

@@ -17,13 +17,16 @@ import com.atomikos.logging.Logger;
 import com.atomikos.logging.LoggerFactory;
 import com.sxb.lin.atomikos.dubbo.DubboXAResourceImpl;
 import com.sxb.lin.atomikos.dubbo.DubboXATransactionalResource;
+import com.sxb.lin.atomikos.dubbo.pool.XAResourcePool;
 
 public class DubboTransactionManagerServiceImpl implements DubboTransactionManagerService{
 	
 	private static final Logger LOGGER = LoggerFactory.createLogger(DubboTransactionManagerServiceImpl.class);
 	
-	DubboTransactionManagerServiceImpl(){
-		
+	private XAResourcePool xaResourcePool;
+	
+	DubboTransactionManagerServiceImpl(XAResourcePool xaResourcePool){
+		this.xaResourcePool = xaResourcePool;
 	}
 	
 	private TransactionalResource findTransactionalResource(String remoteAddress,String uniqueResourceName) {
@@ -33,7 +36,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		synchronized (Configuration.class) {
 			ret = (TransactionalResource) Configuration.getResource(uniqueResourceName);
 			if (ret == null || ret.isClosed()) {
-				ret = new DubboXATransactionalResource(remoteAddress,uniqueResourceName);
+				ret = new DubboXATransactionalResource(uniqueResourceName,remoteAddress);
 				Configuration.addResource(ret);
 			}
 		}
@@ -48,7 +51,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		Transaction transaction = transactionManager.getTransaction(tid);
 		CompositeTransactionManager compositeTransactionManager = Configuration.getCompositeTransactionManager();
 		CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction(tid);
-		DubboXAResourceImpl xaResource = new DubboXAResourceImpl(localAddress);
+		DubboXAResourceImpl xaResource = new DubboXAResourceImpl(localAddress,tid,uniqueResourceName);
 		
 		int status = transaction.getStatus();
 		switch (status) {
@@ -73,30 +76,32 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		restx.resume();
 		
 		StartXid startXid = xaResource.getStartXid();
+		startXid.setStartTime(System.currentTimeMillis());
+		startXid.setTimeout(compositeTransaction.getTimeout());
+		startXid.setTmAddress(remoteAddress);
 		
 		restx.suspend();
 		
 		return startXid;
 	}
 
-	public int prepare(String remoteAddress, Xid xid) throws XAException {
+	public int prepare(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException {
 		// TODO Auto-generated method stub
 		return 0;
 	}
 
-	public void commit(String remoteAddress, Xid xid, boolean onePhase) throws XAException {
+	public void commit(String remoteAddress, Xid xid, boolean onePhase, String tid, String uniqueResourceName) throws XAException {
 		// TODO Auto-generated method stub
 		
 	}
 
-	public void rollback(String remoteAddress, Xid xid) throws XAException {
+	public void rollback(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException {
 		// TODO Auto-generated method stub
 		
 	}
 
-	public Xid[] recover(String remoteAddress, int flag) throws XAException {
-		// TODO Auto-generated method stub
-		return null;
+	public Xid[] recover(String remoteAddress, int flag, String uniqueResourceName) throws XAException {
+		return xaResourcePool.recover(flag, uniqueResourceName);
 	}
 
 }

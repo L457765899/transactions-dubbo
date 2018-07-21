@@ -10,11 +10,11 @@ public interface DubboTransactionManagerService {
 	StartXid enlistResource(String remoteAddress,String tid,String localAddress,
 			String uniqueResourceName) throws SystemException, RollbackException;
 	
-	int prepare(String remoteAddress, Xid xid) throws XAException;
+	int prepare(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException;
 	
-	void commit(String remoteAddress, Xid xid, boolean onePhase) throws XAException;
+	void commit(String remoteAddress, Xid xid, boolean onePhase, String tid, String uniqueResourceName) throws XAException;
 	
-	void rollback(String remoteAddress, Xid xid) throws XAException;
+	void rollback(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException;
 	
-	Xid[] recover(String remoteAddress, int flag) throws XAException;
+	Xid[] recover(String remoteAddress, int flag, String uniqueResourceName) throws XAException;
 }
