@@ -24,24 +24,29 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 	private static final Logger LOGGER = LoggerFactory.createLogger(DubboTransactionManagerServiceImpl.class);
 	
 	private XAResourcePool xaResourcePool;
-	
+		
 	DubboTransactionManagerServiceImpl(XAResourcePool xaResourcePool){
 		this.xaResourcePool = xaResourcePool;
 	}
 	
-	private TransactionalResource findTransactionalResource(String remoteAddress,String uniqueResourceName) {
+	private TransactionalResource findTransactionalResource(String remoteAddress,String uniqueResourceName,
+			long startTime,long timeout) {
 		
-		TransactionalResource ret = null;
-		
-		synchronized (Configuration.class) {
-			ret = (TransactionalResource) Configuration.getResource(uniqueResourceName);
-			if (ret == null || ret.isClosed()) {
-				ret = new DubboXATransactionalResource(uniqueResourceName,remoteAddress);
+		long expiresTime = startTime + timeout;
+		synchronized (uniqueResourceName.intern()) {
+			DubboXATransactionalResource ret = (DubboXATransactionalResource) Configuration.getResource(uniqueResourceName);
+			if(ret != null && !ret.isClosed()){
+				if(expiresTime > ret.getExpiresTime()){
+					ret.setExpiresTime(expiresTime);
+				}
+			}else{
+				ret = new DubboXATransactionalResource(uniqueResourceName, remoteAddress, expiresTime);
 				Configuration.addResource(ret);
 			}
+			
+			return ret;
 		}
-
-		return ret;
+		
 	}
 
 	public StartXid enlistResource(String remoteAddress,String tid,String localAddress,String uniqueResourceName) 
@@ -70,14 +75,16 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 			throw new IllegalStateException(msg);
 		}
 
-		TransactionalResource res = this.findTransactionalResource(localAddress,uniqueResourceName);
+		long startTime = System.currentTimeMillis();
+		long timeout = compositeTransaction.getTimeout() + 3000;
+		TransactionalResource res = this.findTransactionalResource(localAddress,uniqueResourceName,startTime,timeout);
 		XAResourceTransaction restx = (XAResourceTransaction) res.getResourceTransaction(compositeTransaction);
 		restx.setXAResource(xaResource);
 		restx.resume();
 		
 		StartXid startXid = xaResource.getStartXid();
-		startXid.setStartTime(System.currentTimeMillis());
-		startXid.setTimeout(compositeTransaction.getTimeout());
+		startXid.setStartTime(startTime);
+		startXid.setTimeout(timeout);
 		startXid.setTmAddress(remoteAddress);
 		
 		restx.suspend();
@@ -86,18 +93,15 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 	}
 
 	public int prepare(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException {
-		// TODO Auto-generated method stub
-		return 0;
+		return xaResourcePool.prepare(xid);
 	}
 
 	public void commit(String remoteAddress, Xid xid, boolean onePhase, String tid, String uniqueResourceName) throws XAException {
-		// TODO Auto-generated method stub
-		
+		xaResourcePool.commit(xid, onePhase);
 	}
 
 	public void rollback(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException {
-		// TODO Auto-generated method stub
-		
+		xaResourcePool.rollback(xid);
 	}
 
 	public Xid[] recover(String remoteAddress, int flag, String uniqueResourceName) throws XAException {

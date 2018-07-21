@@ -90,21 +90,33 @@ public class XAResourcePool implements Runnable{
 	
 	public int prepare(Xid xid) throws XAException {
 		XAResourceHolder xaResourceHolder = this.pool.get(xid);
-		return xaResourceHolder.prepare(xid);
+		if(xaResourceHolder != null){
+			return xaResourceHolder.prepare(xid);
+		}else{
+			throw new XAException("XAResourceHolder is not exist.");
+		}
 	}
 	
 	public void commit(Xid xid, boolean onePhase) throws XAException {
 		XAResourceHolder xaResourceHolder = this.pool.get(xid);
-		xaResourceHolder.commit(xid, onePhase);
-		this.removeXAResourceHolder(xaResourceHolder);
-		xaResourceHolder.close();
+		if(xaResourceHolder != null){
+			xaResourceHolder.commit(xid, onePhase);
+			this.removeXAResourceHolder(xaResourceHolder);
+			xaResourceHolder.close();
+		}else{
+			throw new XAException("XAResourceHolder is not exist.");
+		}
 	}
 	
 	public void rollback(Xid xid) throws XAException {
 		XAResourceHolder xaResourceHolder = this.pool.get(xid);
-		xaResourceHolder.rollback(xid);
-		this.removeXAResourceHolder(xaResourceHolder);
-		xaResourceHolder.close();
+		if(xaResourceHolder != null){
+			xaResourceHolder.rollback(xid);
+			this.removeXAResourceHolder(xaResourceHolder);
+			xaResourceHolder.close();
+		}else{
+			throw new XAException("XAResourceHolder is not exist.");
+		}
 	}
 
 	public void run() {

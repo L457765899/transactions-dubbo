@@ -43,9 +43,9 @@ public class XAResourceHolder {
 	
 	private XAResource xaResource;
 	
-	private int currentStatus;
-	
 	private StartXid startXid;
+	
+	private volatile int currentStatus;
 	
 	public XAResourceHolder(String dubboUniqueResourceName, 
 			XAConnection xaConnection, Connection connection, XAResource xaResource) {
@@ -56,7 +56,7 @@ public class XAResourceHolder {
 		this.currentStatus = XA_UNKNOWN;
 	}
 	
-	public void start() throws XAException, SystemException, RollbackException {
+	public synchronized void start() throws XAException, SystemException, RollbackException {
 		if(this.currentStatus == XA_START){
 			return;
 		}else if(this.currentStatus == XA_UNKNOWN){
@@ -74,7 +74,7 @@ public class XAResourceHolder {
 		}
 	}
 	
-	public void end() throws XAException{
+	public synchronized void end() throws XAException{
 		if(this.currentStatus == XA_END){
 			return;
 		}else if(this.currentStatus == XA_START){
@@ -87,7 +87,7 @@ public class XAResourceHolder {
 		}
 	}
 	
-	public int prepare(Xid xid) throws XAException {
+	public synchronized int prepare(Xid xid) throws XAException {
 		if(!xid.equals(this.startXid.getXid())){
 			throw new XAException("xaResource can not xa prepare,xid are not same start xid.");
 		}
@@ -102,7 +102,7 @@ public class XAResourceHolder {
 		}
 	}
 	
-	public void commit(Xid xid, boolean onePhase) throws XAException {
+	public synchronized void commit(Xid xid, boolean onePhase) throws XAException {
 		if(!xid.equals(this.startXid.getXid())){
 			throw new XAException("xaResource can not xa commit,xid are not same start xid.");
 		}
@@ -125,7 +125,7 @@ public class XAResourceHolder {
 		}
 	}
 	
-	public void rollback(Xid xid) throws XAException {
+	public synchronized void rollback(Xid xid) throws XAException {
 		if(!xid.equals(this.startXid.getXid())){
 			throw new XAException("xaResource can not xa rollback,xid are not same start xid.");
 		}
