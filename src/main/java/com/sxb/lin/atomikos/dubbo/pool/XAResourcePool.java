@@ -47,6 +47,11 @@ public class XAResourcePool implements Runnable{
 		xaList.add(xaResourceHolder);
 	}
 	
+	public void removeXAResourceHolder(XAResourceHolder xaResourceHolder){
+		this.pool.remove(xaResourceHolder.getStartXid().getXid());
+		this.xaList.remove(xaResourceHolder);
+	}
+	
 	public Xid[] recover(int flag, String uniqueResourceName) throws XAException {
 		
 		if(dataSourceMapping == null){
@@ -91,12 +96,14 @@ public class XAResourcePool implements Runnable{
 	public void commit(Xid xid, boolean onePhase) throws XAException {
 		XAResourceHolder xaResourceHolder = this.pool.get(xid);
 		xaResourceHolder.commit(xid, onePhase);
+		this.removeXAResourceHolder(xaResourceHolder);
 		xaResourceHolder.close();
 	}
 	
 	public void rollback(Xid xid) throws XAException {
 		XAResourceHolder xaResourceHolder = this.pool.get(xid);
 		xaResourceHolder.rollback(xid);
+		this.removeXAResourceHolder(xaResourceHolder);
 		xaResourceHolder.close();
 	}
 
@@ -107,8 +114,7 @@ public class XAResourcePool implements Runnable{
 			long timeout = startXid.getTimeout();
 			long expireTime = startTime + timeout;
 			if(expireTime < System.currentTimeMillis()){
-				this.pool.remove(startXid.getXid());
-				this.xaList.remove(xaResourceHolder);
+				this.removeXAResourceHolder(xaResourceHolder);
 				xaResourceHolder.close();
 			}
 		}
