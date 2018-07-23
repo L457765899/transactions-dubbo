@@ -42,8 +42,10 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 	@Override
 	public void recover() {
 		super.recover();
-		if(this.isClosed()){
-			Configuration.removeResource(uniqueResourceName);
+		synchronized (uniqueResourceName.intern()) {
+			if(this.isClosed()){
+				Configuration.removeResource(uniqueResourceName);
+			}
 		}
 	}
 
