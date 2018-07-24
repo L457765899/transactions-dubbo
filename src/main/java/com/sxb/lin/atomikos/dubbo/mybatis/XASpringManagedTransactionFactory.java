@@ -14,7 +14,7 @@ public class XASpringManagedTransactionFactory extends SpringManagedTransactionF
 	
 	public XASpringManagedTransactionFactory(String dubboUniqueResourceName) {
 		super();
-		if(StringUtils.hasLength(dubboUniqueResourceName)){
+		if(!StringUtils.hasLength(dubboUniqueResourceName)){
 			throw new CannotCreateTransactionException("dubboUniqueResourceName not allowed to be empty.");
 		}
 		this.dubboUniqueResourceName = dubboUniqueResourceName;

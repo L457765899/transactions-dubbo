@@ -4,14 +4,15 @@ import java.util.List;
 
 import com.alibaba.dubbo.rpc.Invocation;
 import com.alibaba.dubbo.rpc.Invoker;
-import com.sxb.lin.atomikos.dubbo.AtomikosDubboException;
+import com.alibaba.dubbo.rpc.RpcException;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerService;
 
 class StickySelect {
 	
 	<T> Invoker<T> select(List<Invoker<T>> invokers, Invoker<T> invoker, Invocation invocation){
 
-		for(Invoker<T> ivk : invokers){
+		for(int i = 0,len = invokers.size();i < len;i++){
+			Invoker<T> ivk = invokers.get(i);
 			if(ivk.getInterface() == DubboTransactionManagerService.class){
 				
 				String remoteAddress = (String) invocation.getArguments()[0];
@@ -24,7 +25,9 @@ class StickySelect {
 				if(selectInvoker != null){
 					return selectInvoker;
 				}else{
-					throw new AtomikosDubboException("can not find invoker,use remote address" + remoteAddress);
+					if(i == len - 1){
+						throw new RpcException("can not find invoker,use remote address" + remoteAddress);
+					}
 				}
 			}
 		}

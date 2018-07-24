@@ -18,14 +18,6 @@ public class StartXid implements Serializable{
 	
 	private String tmAddress;
 
-	public Xid getXid() {
-		return xid;
-	}
-
-	public void setXid(Xid xid) {
-		this.xid = xid;
-	}
-
 	public int getFlags() {
 		return flags;
 	}
@@ -56,6 +48,14 @@ public class StartXid implements Serializable{
 
 	public void setTmAddress(String tmAddress) {
 		this.tmAddress = tmAddress;
+	}
+
+	public Xid getXid() {
+		return xid;
+	}
+
+	public void setXid(Xid xid) {
+		this.xid = xid;
 	}
 
 }

@@ -7,6 +7,7 @@ import javax.transaction.xa.Xid;
 import org.springframework.util.Assert;
 
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
+import com.sxb.lin.atomikos.dubbo.service.DubboXid;
 import com.sxb.lin.atomikos.dubbo.service.StartXid;
 
 public class DubboXAResourceImpl implements XAResource{
@@ -46,8 +47,15 @@ public class DubboXAResourceImpl implements XAResource{
 	}
 	
 	public void start(Xid xid, int flags) throws XAException {
+		DubboXid dubboXid = new DubboXid();
+		dubboXid.setFormatId(xid.getFormatId());
+		dubboXid.setBranchQualifier(xid.getBranchQualifier());
+		dubboXid.setGlobalTransactionId(xid.getGlobalTransactionId());
+		dubboXid.setBranchQualifierStr(new String(xid.getBranchQualifier()));
+		dubboXid.setGlobalTransactionIdStr(new String(xid.getGlobalTransactionId()));
+		
 		startXid = new StartXid();
-		startXid.setXid(xid);
+		startXid.setXid(dubboXid);
 		startXid.setFlags(flags);
 	}
 
