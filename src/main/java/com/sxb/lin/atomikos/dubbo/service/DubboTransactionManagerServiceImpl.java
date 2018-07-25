@@ -7,6 +7,7 @@ import javax.transaction.Transaction;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
 
+import com.atomikos.datasource.RecoverableResource;
 import com.atomikos.datasource.TransactionalResource;
 import com.atomikos.datasource.xa.XAResourceTransaction;
 import com.atomikos.icatch.CompositeTransaction;
@@ -34,14 +35,24 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		
 		long expiresTime = startTime + timeout;
 		synchronized (uniqueResourceName.intern()) {
-			DubboXATransactionalResource ret = (DubboXATransactionalResource) Configuration.getResource(uniqueResourceName);
-			if(ret != null && !ret.isClosed()){
-				if(expiresTime > ret.getExpiresTime()){
-					ret.setExpiresTime(expiresTime);
-				}
-			}else{
+			RecoverableResource resource = Configuration.getResource(uniqueResourceName);
+			TransactionalResource ret = null;
+			if(resource == null){
 				ret = new DubboXATransactionalResource(uniqueResourceName, remoteAddress, expiresTime);
 				Configuration.addResource(ret);
+			} else if (resource instanceof DubboXATransactionalResource){
+				DubboXATransactionalResource dret = (DubboXATransactionalResource) resource;
+				if(dret.isClosed()){
+					ret = new DubboXATransactionalResource(uniqueResourceName, remoteAddress, expiresTime);
+					Configuration.addResource(ret);
+				}else{
+					if(expiresTime > dret.getExpiresTime()){
+						dret.setExpiresTime(expiresTime);
+					}
+					ret = dret;
+				}
+			} else {
+				ret = (TransactionalResource) resource;
 			}
 			
 			return ret;
