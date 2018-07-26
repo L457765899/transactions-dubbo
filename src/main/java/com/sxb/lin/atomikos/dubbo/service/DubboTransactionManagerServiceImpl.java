@@ -119,4 +119,8 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		return xaResourcePool.recover(flag, uniqueResourceName);
 	}
 
+	public int ping(String remoteAddress) {
+		return 0;
+	}
+
 }

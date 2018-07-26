@@ -2,6 +2,7 @@ package com.sxb.lin.atomikos.dubbo.pool;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.UUID;
 
 import javax.sql.XAConnection;
 import javax.transaction.RollbackException;
@@ -47,13 +48,20 @@ public class XAResourceHolder {
 	
 	private volatile int currentStatus;
 	
+	private String uuid;
+	
+	private String tmAddress;
+	
 	public XAResourceHolder(String dubboUniqueResourceName, 
 			XAConnection xaConnection, Connection connection, XAResource xaResource) {
+		String connStr = connection.toString();
+		this.uuid = UUID.nameUUIDFromBytes(connStr.getBytes()).toString();
 		this.dubboUniqueResourceName = dubboUniqueResourceName;
 		this.xaConnection = xaConnection;
 		this.connection = connection;
 		this.xaResource = xaResource;
 		this.currentStatus = XA_UNKNOWN;
+		this.tmAddress = ParticipantXATransactionLocal.current().getTmAddress();
 	}
 	
 	public synchronized void start() throws XAException, SystemException, RollbackException {
@@ -165,6 +173,14 @@ public class XAResourceHolder {
 	public StartXid getStartXid() {
 		return startXid;
 	}
+	
+	public String getUuid() {
+		return uuid;
+	}
+	
+	public String getTmAddress() {
+		return tmAddress;
+	}
 
 	public synchronized void close() {
 		if(currentStatus == CLOSE){
@@ -228,6 +244,8 @@ public class XAResourceHolder {
 			xaResource = null;
 			startXid = null;
 			dubboUniqueResourceName = null;
+			uuid = null;
+			tmAddress = null;
 		}
 	}
 }

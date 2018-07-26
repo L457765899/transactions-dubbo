@@ -17,4 +17,6 @@ public interface DubboTransactionManagerService {
 	void rollback(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException;
 	
 	Xid[] recover(String remoteAddress, int flag, String uniqueResourceName) throws XAException;
+	
+	int ping(String remoteAddress);
 }

@@ -15,10 +15,14 @@ import com.alibaba.dubbo.config.ProviderConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.config.RegistryConfig;
 import com.alibaba.dubbo.config.ServiceConfig;
+import com.atomikos.logging.Logger;
+import com.atomikos.logging.LoggerFactory;
 import com.sxb.lin.atomikos.dubbo.AtomikosDubboException;
 import com.sxb.lin.atomikos.dubbo.pool.XAResourcePool;
 
 public class DubboTransactionManagerServiceProxy implements DubboTransactionManagerService{
+	
+	private static final Logger LOGGER = LoggerFactory.createLogger(DubboTransactionManagerServiceProxy.class);
 	
 	private final static DubboTransactionManagerServiceProxy INSTANCE = new DubboTransactionManagerServiceProxy();
 	
@@ -160,6 +164,19 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 			return this.getLocalDubboTransactionManagerService().recover(remoteAddress, flag, uniqueResourceName);
 		}else{
 			return this.getRemoteDubboTransactionManagerService().recover(remoteAddress, flag, uniqueResourceName);
+		}
+	}
+
+	public int ping(String remoteAddress) {
+		try {
+			if(this.isLocal(remoteAddress)){
+				return this.getLocalDubboTransactionManagerService().ping(remoteAddress);
+			}else{
+				return this.getRemoteDubboTransactionManagerService().ping(remoteAddress);
+			}
+		} catch (Exception e) {
+			LOGGER.logError(e.getMessage(), e);
+			return 1;
 		}
 	}
 	

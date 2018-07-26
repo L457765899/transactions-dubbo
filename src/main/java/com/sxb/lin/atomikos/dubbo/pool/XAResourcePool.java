@@ -1,9 +1,11 @@
 package com.sxb.lin.atomikos.dubbo.pool;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -28,9 +30,7 @@ public class XAResourcePool implements Runnable{
 
 	private Map<String,DataSource> dataSourceMapping;
 	
-	private Map<Xid,XAResourceHolder> pool = new ConcurrentHashMap<Xid, XAResourceHolder>();
-	
-	private List<XAResourceHolder> xaList = new Vector<XAResourceHolder>();
+	private Map<Xid,XAResourceHolder> cachePool = new ConcurrentHashMap<Xid, XAResourceHolder>();
 	
 	private ScheduledExecutorService scheduledExecutorService;
 	
@@ -39,17 +39,27 @@ public class XAResourcePool implements Runnable{
 		super();
 		this.dataSourceMapping = dataSourceMapping;
 		this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-		scheduledExecutorService.scheduleAtFixedRate(this, 30, 60, TimeUnit.SECONDS);
+		scheduledExecutorService.scheduleAtFixedRate(this, 30, 30, TimeUnit.SECONDS);
 	}
 	
 	public void addXAResourceHolder(XAResourceHolder xaResourceHolder){
-		pool.put(xaResourceHolder.getStartXid().getXid(), xaResourceHolder);
-		xaList.add(xaResourceHolder);
+		cachePool.put(xaResourceHolder.getStartXid().getXid(), xaResourceHolder);
 	}
 	
 	public void removeXAResourceHolder(XAResourceHolder xaResourceHolder){
-		this.pool.remove(xaResourceHolder.getStartXid().getXid());
-		this.xaList.remove(xaResourceHolder);
+		this.cachePool.remove(xaResourceHolder.getStartXid().getXid());
+	}
+	
+	public List<XAResourceHolder> getDisconnectedHolderByTmAddress(String tmAddress){
+		Set<Entry<Xid, XAResourceHolder>> set = cachePool.entrySet();
+		List<XAResourceHolder> list = new ArrayList<XAResourceHolder>();
+		for(Entry<Xid, XAResourceHolder> entry : set){
+			XAResourceHolder xaResourceHolder = entry.getValue();
+			if(xaResourceHolder.getTmAddress().equals(tmAddress)){
+				list.add(xaResourceHolder);
+			}
+		}
+		return list;
 	}
 	
 	public Xid[] recover(int flag, String uniqueResourceName) throws XAException {
@@ -89,7 +99,7 @@ public class XAResourcePool implements Runnable{
 	}
 	
 	public int prepare(Xid xid) throws XAException {
-		XAResourceHolder xaResourceHolder = this.pool.get(xid);
+		XAResourceHolder xaResourceHolder = this.cachePool.get(xid);
 		if(xaResourceHolder != null){
 			return xaResourceHolder.prepare(xid);
 		}else{
@@ -98,7 +108,7 @@ public class XAResourcePool implements Runnable{
 	}
 	
 	public void commit(Xid xid, boolean onePhase) throws XAException {
-		XAResourceHolder xaResourceHolder = this.pool.get(xid);
+		XAResourceHolder xaResourceHolder = this.cachePool.get(xid);
 		if(xaResourceHolder != null){
 			xaResourceHolder.commit(xid, onePhase);
 			this.removeXAResourceHolder(xaResourceHolder);
@@ -109,7 +119,7 @@ public class XAResourcePool implements Runnable{
 	}
 	
 	public void rollback(Xid xid) throws XAException {
-		XAResourceHolder xaResourceHolder = this.pool.get(xid);
+		XAResourceHolder xaResourceHolder = this.cachePool.get(xid);
 		if(xaResourceHolder != null){
 			xaResourceHolder.rollback(xid);
 			this.removeXAResourceHolder(xaResourceHolder);
@@ -120,14 +130,21 @@ public class XAResourcePool implements Runnable{
 	}
 
 	public void run() {
-		for(XAResourceHolder xaResourceHolder : xaList){
+		Set<Entry<Xid, XAResourceHolder>> set = cachePool.entrySet();
+		LOGGER.info(set.size()+" size XAResourceHolder has been check is time out.");
+		for(Entry<Xid, XAResourceHolder> entry : set){
+			XAResourceHolder xaResourceHolder = entry.getValue();
 			StartXid startXid = xaResourceHolder.getStartXid();
 			long startTime = startXid.getStartTime();
 			long timeout = startXid.getTimeout();
 			long expireTime = startTime + timeout;
 			if(expireTime < System.currentTimeMillis()){
+				LOGGER.error("UUID " + xaResourceHolder.getUuid() + " is expired,it will be close.");
 				this.removeXAResourceHolder(xaResourceHolder);
 				xaResourceHolder.close();
+			}else{
+				long remaining = expireTime - System.currentTimeMillis();
+				LOGGER.info("UUID " + xaResourceHolder.getUuid() + " is not expired,"+remaining+" milliseconds remaining.");
 			}
 		}
 	}
