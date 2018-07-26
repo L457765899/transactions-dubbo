@@ -38,6 +38,7 @@ public class ChannelEventRunnable extends com.alibaba.dubbo.remoting.transport.d
 			}
 			if(instance.ping(tmAddress) == 1){
 				for(XAResourceHolder xaResourceHolder : list){
+					LOGGER.error("disconected from " + tmAddress + ",so close " + xaResourceHolder.getUuid() + ",it from "+tmAddress);
 					xaResourcePool.removeXAResourceHolder(xaResourceHolder);
 					xaResourceHolder.close();
 				}
