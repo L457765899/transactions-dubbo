@@ -67,7 +67,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		Transaction transaction = transactionManager.getTransaction(tid);
 		CompositeTransactionManager compositeTransactionManager = Configuration.getCompositeTransactionManager();
 		CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction(tid);
-		DubboXAResourceImpl xaResource = new DubboXAResourceImpl(localAddress,tid,uniqueResourceName);
+		DubboXAResourceImpl xaResource = new DubboXAResourceImpl(localAddress, uniqueResourceName);
 		
 		int status = transaction.getStatus();
 		switch (status) {
@@ -103,15 +103,15 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		return startXid;
 	}
 
-	public int prepare(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException {
+	public int prepare(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException {
 		return xaResourcePool.prepare(xid);
 	}
 
-	public void commit(String remoteAddress, Xid xid, boolean onePhase, String tid, String uniqueResourceName) throws XAException {
+	public void commit(String remoteAddress, Xid xid, boolean onePhase, String uniqueResourceName) throws XAException {
 		xaResourcePool.commit(xid, onePhase);
 	}
 
-	public void rollback(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException {
+	public void rollback(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException {
 		xaResourcePool.rollback(xid);
 	}
 
@@ -119,8 +119,10 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		return xaResourcePool.recover(flag, uniqueResourceName);
 	}
 
-	public int ping(String remoteAddress) {
-		return 0;
+	public long ping(String remoteAddress) {
+		long currentTimeMillis = System.currentTimeMillis();
+		LOGGER.logWarning("ping("+remoteAddress+") return "+currentTimeMillis);
+		return currentTimeMillis;
 	}
 
 }

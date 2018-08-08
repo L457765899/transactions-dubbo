@@ -30,18 +30,21 @@ public class ChannelEventRunnable extends com.alibaba.dubbo.remoting.transport.d
 		super.run();
 		if(state == ChannelState.DISCONNECTED){
 			DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
-			String tmAddress = channel.getRemoteAddress().toString();
+			String tmAddress = channel.getRemoteAddress().toString().replace("/", "");
 			XAResourcePool xaResourcePool = instance.getXaResourcePool();
 			List<XAResourceHolder> list = xaResourcePool.getDisconnectedHolderByTmAddress(tmAddress);
 			if(list.size() == 0){
 				return;
 			}
-			if(instance.ping(tmAddress) == 1){
+			long ping = instance.ping(tmAddress);
+			if(ping > 0){
 				for(XAResourceHolder xaResourceHolder : list){
 					LOGGER.error("disconected from " + tmAddress + ",so close " + xaResourceHolder.getUuid() + ",it from "+tmAddress);
 					xaResourcePool.removeXAResourceHolder(xaResourceHolder);
 					xaResourceHolder.close();
 				}
+			} else {
+				LOGGER.info("disconected from " + tmAddress + ",ping " + tmAddress + " is ok,return " + ping);
 			}
 		}
 	}

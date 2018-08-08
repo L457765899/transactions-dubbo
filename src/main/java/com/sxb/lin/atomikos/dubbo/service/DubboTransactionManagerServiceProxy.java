@@ -131,31 +131,31 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		}
 	}
 
-	public int prepare(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException {
+	public int prepare(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException {
 		Xid converXid = converXid(xid);
 		if(this.isLocal(remoteAddress)){
-			return this.getLocalDubboTransactionManagerService().prepare(remoteAddress, converXid, tid, uniqueResourceName);
+			return this.getLocalDubboTransactionManagerService().prepare(remoteAddress, converXid, uniqueResourceName);
 		}else{
-			return this.getRemoteDubboTransactionManagerService().prepare(remoteAddress, converXid, tid, uniqueResourceName);
+			return this.getRemoteDubboTransactionManagerService().prepare(remoteAddress, converXid, uniqueResourceName);
 		}
 	}
 
-	public void commit(String remoteAddress, Xid xid, boolean onePhase, String tid, String uniqueResourceName)
+	public void commit(String remoteAddress, Xid xid, boolean onePhase, String uniqueResourceName)
 			throws XAException {
 		Xid converXid = converXid(xid);
 		if(this.isLocal(remoteAddress)){
-			this.getLocalDubboTransactionManagerService().commit(remoteAddress, converXid, onePhase, tid, uniqueResourceName);
+			this.getLocalDubboTransactionManagerService().commit(remoteAddress, converXid, onePhase, uniqueResourceName);
 		}else{
-			this.getRemoteDubboTransactionManagerService().commit(remoteAddress, converXid, onePhase, tid, uniqueResourceName);
+			this.getRemoteDubboTransactionManagerService().commit(remoteAddress, converXid, onePhase, uniqueResourceName);
 		}
 	}
 
-	public void rollback(String remoteAddress, Xid xid, String tid, String uniqueResourceName) throws XAException {
+	public void rollback(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException {
 		Xid converXid = converXid(xid);
 		if(this.isLocal(remoteAddress)){
-			this.getLocalDubboTransactionManagerService().rollback(remoteAddress, converXid, tid, uniqueResourceName);
+			this.getLocalDubboTransactionManagerService().rollback(remoteAddress, converXid, uniqueResourceName);
 		}else{
-			this.getRemoteDubboTransactionManagerService().rollback(remoteAddress, converXid, tid, uniqueResourceName);
+			this.getRemoteDubboTransactionManagerService().rollback(remoteAddress, converXid, uniqueResourceName);
 		}
 	}
 
@@ -167,7 +167,7 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		}
 	}
 
-	public int ping(String remoteAddress) {
+	public long ping(String remoteAddress) {
 		try {
 			if(this.isLocal(remoteAddress)){
 				return this.getLocalDubboTransactionManagerService().ping(remoteAddress);
@@ -176,7 +176,7 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 			}
 		} catch (Exception e) {
 			LOGGER.logError(e.getMessage(), e);
-			return 1;
+			return -1;
 		}
 	}
 	
