@@ -8,22 +8,19 @@ import com.atomikos.icatch.config.Configuration;
 
 public class DubboXATransactionalResource extends XATransactionalResource{
 	
-	private String remoteAddress;
-	
 	private String uniqueResourceName;
 	
 	private long expiresTime;
 
-	public DubboXATransactionalResource(String uniqueResourceName,String remoteAddress,long expiresTime) {
+	public DubboXATransactionalResource(String uniqueResourceName, long expiresTime) {
 		super(uniqueResourceName);
 		this.uniqueResourceName = uniqueResourceName;
-		this.remoteAddress = remoteAddress;
 		this.expiresTime = expiresTime;
 	}
 
 	@Override
 	protected synchronized XAResource refreshXAConnection() throws ResourceException {
-		return new DubboXAResourceImpl(remoteAddress,uniqueResourceName);
+		return new DubboXAResourceImpl(uniqueResourceName);
 	}
 
 	@Override

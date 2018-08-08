@@ -62,8 +62,7 @@ public class XAResourcePool implements Runnable{
 		return list;
 	}
 	
-	public Xid[] recover(int flag, String uniqueResourceName) throws XAException {
-		
+	protected XAConnection getXAConnection(String uniqueResourceName) throws SQLException{
 		if(dataSourceMapping == null){
 			return null;
 		}
@@ -78,21 +77,32 @@ public class XAResourcePool implements Runnable{
 			return null;
 		}
 		
+		return xaDataSource.getXAConnection();
+	}
+	
+	protected void closeXAConnection(XAConnection xaConnection){
+		if(xaConnection != null){
+			try {
+				xaConnection.close();
+			} catch (SQLException e) {
+				LOGGER.error(e.getMessage(), e);
+			}
+		}
+	}
+	
+	public Xid[] recover(int flag, String uniqueResourceName) throws XAException {
+		
 		XAConnection xaConnection = null;
 		try {
-			xaConnection = xaDataSource.getXAConnection();
-			XAResource xaResource = xaConnection.getXAResource();
-			return xaResource.recover(flag);
+			xaConnection = this.getXAConnection(uniqueResourceName);
+			if(xaConnection != null){
+				XAResource xaResource = xaConnection.getXAResource();
+				return xaResource.recover(flag);
+			}
 		} catch (SQLException e) {
 			LOGGER.error(e.getMessage(), e);
 		} finally {
-			if(xaConnection != null){
-				try {
-					xaConnection.close();
-				} catch (SQLException e) {
-					LOGGER.error(e.getMessage(), e);
-				}
-			}
+			this.closeXAConnection(xaConnection);
 		}
 		
 		return null;
@@ -107,25 +117,51 @@ public class XAResourcePool implements Runnable{
 		}
 	}
 	
-	public void commit(Xid xid, boolean onePhase) throws XAException {
+	public void commit(Xid xid, boolean onePhase, String uniqueResourceName) throws XAException {
 		XAResourceHolder xaResourceHolder = this.cachePool.get(xid);
 		if(xaResourceHolder != null){
 			xaResourceHolder.commit(xid, onePhase);
 			this.removeXAResourceHolder(xaResourceHolder);
 			xaResourceHolder.close();
 		}else{
-			throw new XAException("XAResourceHolder is not exist.");
+			XAConnection xaConnection = null;
+			try {
+				xaConnection = this.getXAConnection(uniqueResourceName);
+				if(xaConnection != null){
+					XAResource xaResource = xaConnection.getXAResource();
+					xaResource.commit(xid, onePhase);
+				}else{
+					throw new XAException("XAResourceHolder or XAConnection is not exist.");
+				}
+			} catch (SQLException e) {
+				LOGGER.error(e.getMessage(), e);
+			} finally {
+				this.closeXAConnection(xaConnection);
+			}
 		}
 	}
 	
-	public void rollback(Xid xid) throws XAException {
+	public void rollback(Xid xid,String uniqueResourceName) throws XAException {
 		XAResourceHolder xaResourceHolder = this.cachePool.get(xid);
 		if(xaResourceHolder != null){
 			xaResourceHolder.rollback(xid);
 			this.removeXAResourceHolder(xaResourceHolder);
 			xaResourceHolder.close();
 		}else{
-			throw new XAException("XAResourceHolder is not exist.");
+			XAConnection xaConnection = null;
+			try {
+				xaConnection = this.getXAConnection(uniqueResourceName);
+				if(xaConnection != null){
+					XAResource xaResource = xaConnection.getXAResource();
+					xaResource.rollback(xid);
+				}else{
+					throw new XAException("XAResourceHolder or XAConnection is not exist.");
+				}
+			} catch (SQLException e) {
+				LOGGER.error(e.getMessage(), e);
+			} finally {
+				this.closeXAConnection(xaConnection);
+			}
 		}
 	}
 

@@ -7,6 +7,8 @@ import javax.transaction.Transaction;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
 
+import org.springframework.util.StringUtils;
+
 import com.atomikos.datasource.RecoverableResource;
 import com.atomikos.datasource.TransactionalResource;
 import com.atomikos.datasource.xa.XAResourceTransaction;
@@ -25,12 +27,14 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 	private static final Logger LOGGER = LoggerFactory.createLogger(DubboTransactionManagerServiceImpl.class);
 	
 	private XAResourcePool xaResourcePool;
+	
+	private String localAddress;
 		
 	DubboTransactionManagerServiceImpl(XAResourcePool xaResourcePool){
 		this.xaResourcePool = xaResourcePool;
 	}
 	
-	private TransactionalResource findTransactionalResource(String remoteAddress,String uniqueResourceName,
+	private TransactionalResource findTransactionalResource(String uniqueResourceName,
 			long startTime,long timeout) {
 		
 		long expiresTime = startTime + timeout;
@@ -38,12 +42,12 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 			RecoverableResource resource = Configuration.getResource(uniqueResourceName);
 			TransactionalResource ret = null;
 			if(resource == null){
-				ret = new DubboXATransactionalResource(uniqueResourceName, remoteAddress, expiresTime);
+				ret = new DubboXATransactionalResource(uniqueResourceName, expiresTime);
 				Configuration.addResource(ret);
 			} else if (resource instanceof DubboXATransactionalResource){
 				DubboXATransactionalResource dret = (DubboXATransactionalResource) resource;
 				if(dret.isClosed()){
-					ret = new DubboXATransactionalResource(uniqueResourceName, remoteAddress, expiresTime);
+					ret = new DubboXATransactionalResource(uniqueResourceName, expiresTime);
 					Configuration.addResource(ret);
 				}else{
 					if(expiresTime > dret.getExpiresTime()){
@@ -88,7 +92,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 
 		long startTime = System.currentTimeMillis();
 		long timeout = compositeTransaction.getTimeout() + 3000;
-		TransactionalResource res = this.findTransactionalResource(localAddress,uniqueResourceName,startTime,timeout);
+		TransactionalResource res = this.findTransactionalResource(uniqueResourceName,startTime,timeout);
 		XAResourceTransaction restx = (XAResourceTransaction) res.getResourceTransaction(compositeTransaction);
 		restx.setXAResource(xaResource);
 		restx.resume();
@@ -104,15 +108,31 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 	}
 
 	public int prepare(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException {
-		return xaResourcePool.prepare(xid);
+		if(StringUtils.hasLength(remoteAddress) && remoteAddress.equals(localAddress)){
+			return xaResourcePool.prepare(xid);
+		}else{
+			throw new XAException("remoteAddress " + remoteAddress + " is error,can not prepare.");
+		}
 	}
 
 	public void commit(String remoteAddress, Xid xid, boolean onePhase, String uniqueResourceName) throws XAException {
-		xaResourcePool.commit(xid, onePhase);
+		if(remoteAddress == null){
+			xaResourcePool.commit(xid, onePhase, uniqueResourceName);
+		} else if(StringUtils.hasLength(remoteAddress) && remoteAddress.equals(localAddress)){
+			xaResourcePool.commit(xid, onePhase, uniqueResourceName);
+		} else {
+			throw new XAException("remoteAddress " + remoteAddress + " is error,can not commit.");
+		}
 	}
 
 	public void rollback(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException {
-		xaResourcePool.rollback(xid);
+		if(remoteAddress == null){
+			xaResourcePool.rollback(xid, uniqueResourceName);
+		} else if(StringUtils.hasLength(remoteAddress) && remoteAddress.equals(localAddress)){
+			xaResourcePool.rollback(xid, uniqueResourceName);
+		} else {
+			throw new XAException("remoteAddress " + remoteAddress + " is error,can not rollback.");
+		}
 	}
 
 	public Xid[] recover(String remoteAddress, int flag, String uniqueResourceName) throws XAException {
@@ -120,9 +140,21 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 	}
 
 	public long ping(String remoteAddress) {
-		long currentTimeMillis = System.currentTimeMillis();
-		LOGGER.logWarning("ping("+remoteAddress+") return "+currentTimeMillis);
-		return currentTimeMillis;
+		if(StringUtils.hasLength(remoteAddress) && remoteAddress.equals(localAddress)){
+			long currentTimeMillis = System.currentTimeMillis();
+			LOGGER.logWarning("ping("+remoteAddress+") return "+currentTimeMillis);
+			return currentTimeMillis;
+		} else {
+			return -1;
+		}
+	}
+
+	public String getLocalAddress() {
+		return localAddress;
+	}
+
+	public void setLocalAddress(String localAddress) {
+		this.localAddress = localAddress;
 	}
 
 }

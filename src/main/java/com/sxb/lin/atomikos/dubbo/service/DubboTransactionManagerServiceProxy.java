@@ -58,16 +58,18 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	private void export(ApplicationConfig applicationConfig,RegistryConfig registryConfig,
 			ProtocolConfig protocolConfig,ProviderConfig providerConfig,Map<String,DataSource> dataSourceMapping){
 		xaResourcePool = new XAResourcePool(dataSourceMapping);
-		localDubboTransactionManagerService = new DubboTransactionManagerServiceImpl(xaResourcePool);
+		DubboTransactionManagerServiceImpl dubboTransactionManagerService = new DubboTransactionManagerServiceImpl(xaResourcePool);
 		ServiceConfig<DubboTransactionManagerService> serviceConfig = new ServiceConfig<DubboTransactionManagerService>();
 		serviceConfig.setApplication(applicationConfig);
         serviceConfig.setRegistry(registryConfig);
         serviceConfig.setProtocol(protocolConfig);
         serviceConfig.setProvider(providerConfig);
         serviceConfig.setInterface(DubboTransactionManagerService.class);
-        serviceConfig.setRef(localDubboTransactionManagerService);
+        serviceConfig.setRef(dubboTransactionManagerService);
         serviceConfig.export();
         localAddress = serviceConfig.toUrl().getAddress();
+        dubboTransactionManagerService.setLocalAddress(localAddress);
+        localDubboTransactionManagerService = dubboTransactionManagerService;
 	}
 	
 	private void reference(ApplicationConfig applicationConfig,RegistryConfig registryConfig,ConsumerConfig consumerConfig){

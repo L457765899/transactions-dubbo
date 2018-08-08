@@ -15,6 +15,10 @@ public class DubboXAResourceImpl implements XAResource{
 	private String remoteAddress;
 	
 	private String uniqueResourceName;
+	
+	public DubboXAResourceImpl(String uniqueResourceName) {
+		this(null,uniqueResourceName);
+	}
 
 	public DubboXAResourceImpl(String remoteAddress, String uniqueResourceName) {
 		this.remoteAddress = remoteAddress;
