@@ -64,8 +64,8 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		
 	}
 
-	public StartXid enlistResource(String remoteAddress,String tid,String localAddress,String uniqueResourceName) 
-			throws SystemException, RollbackException {
+	public StartXid enlistResource(String remoteAddress, String uniqueResourceName, String tid, 
+			String localAddress) throws SystemException, RollbackException {
 		
 		TransactionManagerImp transactionManager = (TransactionManagerImp) TransactionManagerImp.getTransactionManager();
 		Transaction transaction = transactionManager.getTransaction(tid);
@@ -107,7 +107,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		return startXid;
 	}
 
-	public int prepare(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException {
+	public int prepare(String remoteAddress, String uniqueResourceName, Xid xid) throws XAException {
 		if(StringUtils.hasLength(remoteAddress) && remoteAddress.equals(localAddress)){
 			return xaResourcePool.prepare(xid);
 		}else{
@@ -115,7 +115,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		}
 	}
 
-	public void commit(String remoteAddress, Xid xid, boolean onePhase, String uniqueResourceName) throws XAException {
+	public void commit(String remoteAddress, String uniqueResourceName, Xid xid, boolean onePhase) throws XAException {
 		if(remoteAddress == null){
 			xaResourcePool.commit(xid, onePhase, uniqueResourceName);
 		} else if(StringUtils.hasLength(remoteAddress) && remoteAddress.equals(localAddress)){
@@ -125,7 +125,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		}
 	}
 
-	public void rollback(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException {
+	public void rollback(String remoteAddress, String uniqueResourceName, Xid xid) throws XAException {
 		if(remoteAddress == null){
 			xaResourcePool.rollback(xid, uniqueResourceName);
 		} else if(StringUtils.hasLength(remoteAddress) && remoteAddress.equals(localAddress)){
@@ -135,7 +135,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		}
 	}
 
-	public Xid[] recover(String remoteAddress, int flag, String uniqueResourceName) throws XAException {
+	public Xid[] recover(String remoteAddress, String uniqueResourceName, int flag) throws XAException {
 		return xaResourcePool.recover(flag, uniqueResourceName);
 	}
 

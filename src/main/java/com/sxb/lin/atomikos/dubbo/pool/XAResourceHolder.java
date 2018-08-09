@@ -70,8 +70,8 @@ public class XAResourceHolder {
 		}else if(this.currentStatus == XA_UNKNOWN){
 			ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
 			DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
-			this.startXid = instance.enlistResource(current.getTmAddress(), current.getTid(), 
-					instance.getLocalAddress(), dubboUniqueResourceName);
+			this.startXid = instance.enlistResource(current.getTmAddress(), dubboUniqueResourceName, 
+					current.getTid(), instance.getLocalAddress());
 			this.xaResource.start(this.startXid.getXid(), this.startXid.getFlags());
 			this.currentStatus = XA_START;
 			

@@ -1,5 +1,6 @@
 package com.sxb.lin.atomikos.dubbo.service;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.sql.DataSource;
@@ -7,6 +8,8 @@ import javax.transaction.RollbackException;
 import javax.transaction.SystemException;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
+
+import org.springframework.util.StringUtils;
 
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ConsumerConfig;
@@ -57,6 +60,10 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	
 	private void export(ApplicationConfig applicationConfig,RegistryConfig registryConfig,
 			ProtocolConfig protocolConfig,ProviderConfig providerConfig,Map<String,DataSource> dataSourceMapping){
+		String uniqueResourceNames = StringUtils.collectionToCommaDelimitedString(dataSourceMapping.keySet());
+		Map<String, String> parameters = new HashMap<String, String>();
+		parameters.put("uniqueResourceNames", uniqueResourceNames);
+		
 		xaResourcePool = new XAResourcePool(dataSourceMapping);
 		DubboTransactionManagerServiceImpl dubboTransactionManagerService = new DubboTransactionManagerServiceImpl(xaResourcePool);
 		ServiceConfig<DubboTransactionManagerService> serviceConfig = new ServiceConfig<DubboTransactionManagerService>();
@@ -66,6 +73,7 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
         serviceConfig.setProvider(providerConfig);
         serviceConfig.setInterface(DubboTransactionManagerService.class);
         serviceConfig.setRef(dubboTransactionManagerService);
+        serviceConfig.setParameters(parameters);
         serviceConfig.export();
         localAddress = serviceConfig.toUrl().getAddress();
         dubboTransactionManagerService.setLocalAddress(localAddress);
@@ -121,51 +129,50 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		return xaResourcePool;
 	}
 
-	public StartXid enlistResource(String remoteAddress, String tid,
-			String localAddress, String uniqueResourceName)
-			throws SystemException, RollbackException {
+	public StartXid enlistResource(String remoteAddress, String uniqueResourceName, String tid,
+			String localAddress) throws SystemException, RollbackException {
 		if(this.isLocal(remoteAddress)){
 			return this.getLocalDubboTransactionManagerService()
-					.enlistResource(remoteAddress, tid, localAddress, uniqueResourceName);
+					.enlistResource(remoteAddress, uniqueResourceName, tid, localAddress);
 		}else{
 			return this.getRemoteDubboTransactionManagerService()
-					.enlistResource(remoteAddress, tid, localAddress, uniqueResourceName);
+					.enlistResource(remoteAddress, uniqueResourceName, tid, localAddress);
 		}
 	}
 
-	public int prepare(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException {
+	public int prepare(String remoteAddress, String uniqueResourceName, Xid xid) throws XAException {
 		Xid converXid = converXid(xid);
 		if(this.isLocal(remoteAddress)){
-			return this.getLocalDubboTransactionManagerService().prepare(remoteAddress, converXid, uniqueResourceName);
+			return this.getLocalDubboTransactionManagerService().prepare(remoteAddress, uniqueResourceName, converXid);
 		}else{
-			return this.getRemoteDubboTransactionManagerService().prepare(remoteAddress, converXid, uniqueResourceName);
+			return this.getRemoteDubboTransactionManagerService().prepare(remoteAddress, uniqueResourceName, converXid);
 		}
 	}
 
-	public void commit(String remoteAddress, Xid xid, boolean onePhase, String uniqueResourceName)
+	public void commit(String remoteAddress, String uniqueResourceName, Xid xid, boolean onePhase)
 			throws XAException {
 		Xid converXid = converXid(xid);
 		if(this.isLocal(remoteAddress)){
-			this.getLocalDubboTransactionManagerService().commit(remoteAddress, converXid, onePhase, uniqueResourceName);
+			this.getLocalDubboTransactionManagerService().commit(remoteAddress, uniqueResourceName, converXid, onePhase);
 		}else{
-			this.getRemoteDubboTransactionManagerService().commit(remoteAddress, converXid, onePhase, uniqueResourceName);
+			this.getRemoteDubboTransactionManagerService().commit(remoteAddress, uniqueResourceName, converXid, onePhase);
 		}
 	}
 
-	public void rollback(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException {
+	public void rollback(String remoteAddress, String uniqueResourceName, Xid xid) throws XAException {
 		Xid converXid = converXid(xid);
 		if(this.isLocal(remoteAddress)){
-			this.getLocalDubboTransactionManagerService().rollback(remoteAddress, converXid, uniqueResourceName);
+			this.getLocalDubboTransactionManagerService().rollback(remoteAddress, uniqueResourceName, converXid);
 		}else{
-			this.getRemoteDubboTransactionManagerService().rollback(remoteAddress, converXid, uniqueResourceName);
+			this.getRemoteDubboTransactionManagerService().rollback(remoteAddress, uniqueResourceName, converXid);
 		}
 	}
 
-	public Xid[] recover(String remoteAddress, int flag, String uniqueResourceName) throws XAException {
+	public Xid[] recover(String remoteAddress, String uniqueResourceName, int flag) throws XAException {
 		if(this.isLocal(remoteAddress)){
-			return this.getLocalDubboTransactionManagerService().recover(remoteAddress, flag, uniqueResourceName);
+			return this.getLocalDubboTransactionManagerService().recover(remoteAddress, uniqueResourceName, flag);
 		}else{
-			return this.getRemoteDubboTransactionManagerService().recover(remoteAddress, flag, uniqueResourceName);
+			return this.getRemoteDubboTransactionManagerService().recover(remoteAddress, uniqueResourceName, flag);
 		}
 	}
 

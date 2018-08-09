@@ -7,16 +7,16 @@ import javax.transaction.xa.Xid;
 
 public interface DubboTransactionManagerService {
 
-	StartXid enlistResource(String remoteAddress,String tid,String localAddress,
-			String uniqueResourceName) throws SystemException, RollbackException;
+	StartXid enlistResource(String remoteAddress,String uniqueResourceName,String tid,
+			String localAddress) throws SystemException, RollbackException;
 	
-	int prepare(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException;
+	int prepare(String remoteAddress, String uniqueResourceName, Xid xid) throws XAException;
 	
-	void commit(String remoteAddress, Xid xid, boolean onePhase, String uniqueResourceName) throws XAException;
+	void commit(String remoteAddress, String uniqueResourceName, Xid xid, boolean onePhase) throws XAException;
 	
-	void rollback(String remoteAddress, Xid xid, String uniqueResourceName) throws XAException;
+	void rollback(String remoteAddress, String uniqueResourceName, Xid xid) throws XAException;
 	
-	Xid[] recover(String remoteAddress, int flag, String uniqueResourceName) throws XAException;
+	Xid[] recover(String remoteAddress, String uniqueResourceName, int flag) throws XAException;
 	
 	long ping(String remoteAddress);
 }

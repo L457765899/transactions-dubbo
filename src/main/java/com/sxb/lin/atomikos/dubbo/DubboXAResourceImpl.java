@@ -26,15 +26,15 @@ public class DubboXAResourceImpl implements XAResource{
 	}
 	
 	public int prepare(Xid xid) throws XAException {
-		return DubboTransactionManagerServiceProxy.getInstance().prepare(remoteAddress, xid, uniqueResourceName);
+		return DubboTransactionManagerServiceProxy.getInstance().prepare(remoteAddress, uniqueResourceName, xid);
 	}
 
 	public void commit(Xid xid, boolean onePhase) throws XAException {
-		DubboTransactionManagerServiceProxy.getInstance().commit(remoteAddress, xid, onePhase, uniqueResourceName);
+		DubboTransactionManagerServiceProxy.getInstance().commit(remoteAddress, uniqueResourceName, xid, onePhase);
 	}
 	
 	public void rollback(Xid xid) throws XAException {
-		DubboTransactionManagerServiceProxy.getInstance().rollback(remoteAddress, xid, uniqueResourceName);
+		DubboTransactionManagerServiceProxy.getInstance().rollback(remoteAddress, uniqueResourceName, xid);
 	}
 	
 	public void start(Xid xid, int flags) throws XAException {
@@ -55,7 +55,7 @@ public class DubboXAResourceImpl implements XAResource{
 	}
 	
 	public Xid[] recover(int flag) throws XAException {
-		return DubboTransactionManagerServiceProxy.getInstance().recover(remoteAddress, flag, uniqueResourceName);
+		return DubboTransactionManagerServiceProxy.getInstance().recover(remoteAddress, uniqueResourceName, flag);
 	}
 
 	public void forget(Xid xid) throws XAException {
