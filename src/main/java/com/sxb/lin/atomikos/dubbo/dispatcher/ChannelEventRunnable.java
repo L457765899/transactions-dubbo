@@ -31,6 +31,7 @@ public class ChannelEventRunnable extends com.alibaba.dubbo.remoting.transport.d
 		if(state == ChannelState.DISCONNECTED){
 			DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
 			String tmAddress = channel.getRemoteAddress().toString().replace("/", "");
+			LOGGER.warn("disconected from " + tmAddress + ",need to check the pool's connection.");
 			XAResourcePool xaResourcePool = instance.getXaResourcePool();
 			List<XAResourceHolder> list = xaResourcePool.getDisconnectedHolderByTmAddress(tmAddress);
 			if(list.size() == 0){

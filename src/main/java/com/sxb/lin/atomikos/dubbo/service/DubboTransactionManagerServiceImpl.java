@@ -28,40 +28,25 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 	
 	private XAResourcePool xaResourcePool;
 	
+	private DubboXATransactionalResource dubboXATransactionalResource;
+	
 	private String localAddress;
 		
-	DubboTransactionManagerServiceImpl(XAResourcePool xaResourcePool){
+	DubboTransactionManagerServiceImpl(XAResourcePool xaResourcePool,
+			DubboXATransactionalResource dubboXATransactionalResource){
 		this.xaResourcePool = xaResourcePool;
+		this.dubboXATransactionalResource = dubboXATransactionalResource;
 	}
 	
-	private TransactionalResource findTransactionalResource(String uniqueResourceName,
-			long startTime,long timeout) {
-		
-		long expiresTime = startTime + timeout;
-		synchronized (uniqueResourceName.intern()) {
-			RecoverableResource resource = Configuration.getResource(uniqueResourceName);
-			TransactionalResource ret = null;
-			if(resource == null){
-				ret = new DubboXATransactionalResource(uniqueResourceName, expiresTime);
-				Configuration.addResource(ret);
-			} else if (resource instanceof DubboXATransactionalResource){
-				DubboXATransactionalResource dret = (DubboXATransactionalResource) resource;
-				if(dret.isClosed()){
-					ret = new DubboXATransactionalResource(uniqueResourceName, expiresTime);
-					Configuration.addResource(ret);
-				}else{
-					if(expiresTime > dret.getExpiresTime()){
-						dret.setExpiresTime(expiresTime);
-					}
-					ret = dret;
-				}
-			} else {
-				ret = (TransactionalResource) resource;
-			}
-			
-			return ret;
+	private TransactionalResource findOrCreateTransactionalResource(String uniqueResourceName,long timeout) {
+		RecoverableResource resource = Configuration.getResource(uniqueResourceName);
+		TransactionalResource ret = null;
+		if(resource == null){
+			ret = dubboXATransactionalResource.createTransactionalResource(uniqueResourceName,timeout);
+		} else {
+			ret = (TransactionalResource) resource;
 		}
-		
+		return ret;
 	}
 
 	public StartXid enlistResource(String remoteAddress, String uniqueResourceName, String tid, 
@@ -92,11 +77,11 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 
 		long startTime = System.currentTimeMillis();
 		long timeout = compositeTransaction.getTimeout() + 3000;
-		TransactionalResource res = this.findTransactionalResource(uniqueResourceName,startTime,timeout);
+		TransactionalResource res = this.findOrCreateTransactionalResource(uniqueResourceName,timeout);
 		XAResourceTransaction restx = (XAResourceTransaction) res.getResourceTransaction(compositeTransaction);
 		restx.setXAResource(xaResource);
 		restx.resume();
-		
+
 		StartXid startXid = xaResource.getStartXid();
 		startXid.setStartTime(startTime);
 		startXid.setTimeout(timeout);

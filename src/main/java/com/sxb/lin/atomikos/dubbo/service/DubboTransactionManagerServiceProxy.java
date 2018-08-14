@@ -21,6 +21,7 @@ import com.alibaba.dubbo.config.ServiceConfig;
 import com.atomikos.logging.Logger;
 import com.atomikos.logging.LoggerFactory;
 import com.sxb.lin.atomikos.dubbo.AtomikosDubboException;
+import com.sxb.lin.atomikos.dubbo.DubboXATransactionalResource;
 import com.sxb.lin.atomikos.dubbo.pool.XAResourcePool;
 
 public class DubboTransactionManagerServiceProxy implements DubboTransactionManagerService{
@@ -38,6 +39,8 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	private DubboTransactionManagerService localDubboTransactionManagerService;
 	
 	private XAResourcePool xaResourcePool;
+	
+	private DubboXATransactionalResource dubboXATransactionalResource;
 	
 	private boolean inited = false;
 	
@@ -64,8 +67,10 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		Map<String, String> parameters = new HashMap<String, String>();
 		parameters.put("uniqueResourceNames", uniqueResourceNames);
 		
+		dubboXATransactionalResource = new DubboXATransactionalResource();
 		xaResourcePool = new XAResourcePool(dataSourceMapping);
-		DubboTransactionManagerServiceImpl dubboTransactionManagerService = new DubboTransactionManagerServiceImpl(xaResourcePool);
+		DubboTransactionManagerServiceImpl dubboTransactionManagerService = 
+				new DubboTransactionManagerServiceImpl(xaResourcePool,dubboXATransactionalResource);
 		ServiceConfig<DubboTransactionManagerService> serviceConfig = new ServiceConfig<DubboTransactionManagerService>();
 		serviceConfig.setApplication(applicationConfig);
         serviceConfig.setRegistry(registryConfig);
@@ -128,6 +133,10 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	public XAResourcePool getXaResourcePool() {
 		return xaResourcePool;
 	}
+	
+	public DubboXATransactionalResource getDubboXATransactionalResource() {
+		return dubboXATransactionalResource;
+	}
 
 	public StartXid enlistResource(String remoteAddress, String uniqueResourceName, String tid,
 			String localAddress) throws SystemException, RollbackException {
@@ -188,5 +197,5 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 			return -1;
 		}
 	}
-	
+
 }
