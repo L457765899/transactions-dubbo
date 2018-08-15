@@ -18,6 +18,7 @@ import com.alibaba.dubbo.config.ProviderConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.config.RegistryConfig;
 import com.alibaba.dubbo.config.ServiceConfig;
+import com.atomikos.icatch.config.Configuration;
 import com.atomikos.logging.Logger;
 import com.atomikos.logging.LoggerFactory;
 import com.sxb.lin.atomikos.dubbo.AtomikosDubboException;
@@ -56,9 +57,11 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		if(inited){
 			return;
 		}
+		dubboXATransactionalResource = new DubboXATransactionalResource();
 		this.export(applicationConfig, registryConfig, protocolConfig, providerConfig,dataSourceMapping);
 		this.reference(applicationConfig, registryConfig, consumerConfig);
 		inited = true;
+		Configuration.addResource(dubboXATransactionalResource);
 	}
 	
 	private void export(ApplicationConfig applicationConfig,RegistryConfig registryConfig,
@@ -67,7 +70,6 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		Map<String, String> parameters = new HashMap<String, String>();
 		parameters.put("uniqueResourceNames", uniqueResourceNames);
 		
-		dubboXATransactionalResource = new DubboXATransactionalResource();
 		xaResourcePool = new XAResourcePool(dataSourceMapping);
 		DubboTransactionManagerServiceImpl dubboTransactionManagerService = 
 				new DubboTransactionManagerServiceImpl(xaResourcePool,dubboXATransactionalResource);

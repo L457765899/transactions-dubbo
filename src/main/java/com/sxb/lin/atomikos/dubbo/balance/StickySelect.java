@@ -24,7 +24,7 @@ class StickySelect {
 				
 				Invoker<T> doSelect = this.doSelectByRemoteAddress(invokers, remoteAddress);
 				if(doSelect == null){
-					throw new RpcException("can not find invoker,use remote address" + remoteAddress);
+					throw new RpcException("can not find invoker,use remote address " + remoteAddress);
 				}
 				return doSelect;
 				
@@ -40,7 +40,7 @@ class StickySelect {
 					
 					Invoker<T> doSelect = this.doSelectByUniqueResourceName(invokers, uniqueResourceName);
 					if(doSelect == null){
-						throw new RpcException("can not find invoker,use unique resource name" + uniqueResourceName);
+						throw new RpcException("can not find invoker,use unique resource name " + uniqueResourceName);
 					}
 					return doSelect;
 					

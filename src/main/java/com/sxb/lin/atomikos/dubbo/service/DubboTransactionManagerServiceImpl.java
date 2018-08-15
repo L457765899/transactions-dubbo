@@ -38,6 +38,25 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		this.dubboXATransactionalResource = dubboXATransactionalResource;
 	}
 	
+	private Xid[] converXids(Xid[] xids){
+		if(xids != null){
+			int lenth = xids.length;
+			DubboXid[] dubboXids = new DubboXid[lenth];
+			for(int i = 0;i < lenth;i++){
+				Xid xid = xids[i];
+				DubboXid dubboXid = new DubboXid();
+				dubboXid.setFormatId(xid.getFormatId());
+				dubboXid.setBranchQualifier(xid.getBranchQualifier());
+				dubboXid.setGlobalTransactionId(xid.getGlobalTransactionId());
+				dubboXid.setBranchQualifierStr(new String(xid.getBranchQualifier()));
+				dubboXid.setGlobalTransactionIdStr(new String(xid.getGlobalTransactionId()));
+				dubboXids[i] = dubboXid;
+			}
+			return dubboXids;
+		}
+		return xids;
+	}
+	
 	private TransactionalResource findOrCreateTransactionalResource(String uniqueResourceName,long timeout) {
 		RecoverableResource resource = Configuration.getResource(uniqueResourceName);
 		TransactionalResource ret = null;
@@ -77,7 +96,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 
 		long startTime = System.currentTimeMillis();
 		long timeout = compositeTransaction.getTimeout() + 3000;
-		TransactionalResource res = this.findOrCreateTransactionalResource(uniqueResourceName,timeout);
+		TransactionalResource res = this.findOrCreateTransactionalResource(uniqueResourceName,startTime + timeout);
 		XAResourceTransaction restx = (XAResourceTransaction) res.getResourceTransaction(compositeTransaction);
 		restx.setXAResource(xaResource);
 		restx.resume();
@@ -121,7 +140,8 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 	}
 
 	public Xid[] recover(String remoteAddress, String uniqueResourceName, int flag) throws XAException {
-		return xaResourcePool.recover(flag, uniqueResourceName);
+		Xid[] xids = xaResourcePool.recover(flag, uniqueResourceName);
+		return this.converXids(xids);
 	}
 
 	public long ping(String remoteAddress) {

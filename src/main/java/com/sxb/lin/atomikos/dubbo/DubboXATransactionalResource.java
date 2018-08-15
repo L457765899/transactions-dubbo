@@ -30,8 +30,7 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 	private Map<String,Long> recoverMap;
 	
 	public DubboXATransactionalResource() {
-		super("allDubboXATransactionalResource");
-		Configuration.addResource(this);
+		super("dubboXATransactionalResource");
 		uniqueResourceNameMap = new ConcurrentHashMap<String, Long>();
 		recoverMap = new ConcurrentHashMap<String, Long>();
 	}
@@ -39,6 +38,11 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 	@Override
 	protected XAResource refreshXAConnection() throws ResourceException {
 		return null;
+	}
+	
+	protected XAResource createDubboXAResource(String resourceName) {
+		LOGGER.logInfo ( this.getName() + ": created " + resourceName + " XAResource" );	
+		return new DubboXAResourceImpl(resourceName);
 	}
 
 	@Override
@@ -67,7 +71,7 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 			if (xaResourceRecoveryManager != null) {
 				for(String resourceName : resourceNames){
 					try {
-						xaResourceRecoveryManager.recover(new DubboXAResourceImpl(resourceName));
+						xaResourceRecoveryManager.recover(this.createDubboXAResource(resourceName));
 					} catch (Exception e) {
 						LOGGER.logError(e.getMessage(), e);
 					}
@@ -85,6 +89,7 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 		Collection<ParticipantLogEntry> entries = log.getCommittingParticipants();
 		for (ParticipantLogEntry entry : entries) {
 			if (expired(entry) && !http(entry)) {
+				LOGGER.logWarning("committing interrupted " + entry.toString());
 				ret.add(entry.resourceName);
 			}
 		}

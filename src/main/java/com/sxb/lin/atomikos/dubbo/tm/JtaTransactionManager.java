@@ -1,8 +1,12 @@
 package com.sxb.lin.atomikos.dubbo.tm;
 
+import java.util.Collection;
+
 import javax.transaction.NotSupportedException;
 import javax.transaction.SystemException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.jta.JtaTransactionObject;
 import org.springframework.transaction.support.DefaultTransactionStatus;
@@ -10,14 +14,21 @@ import org.springframework.transaction.support.DefaultTransactionStatus;
 import com.atomikos.icatch.CompositeTransaction;
 import com.atomikos.icatch.CompositeTransactionManager;
 import com.atomikos.icatch.config.Configuration;
+import com.atomikos.recovery.LogReadException;
+import com.atomikos.recovery.ParticipantLogEntry;
+import com.atomikos.recovery.RecoveryLog;
+import com.atomikos.recovery.TxState;
 import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
 
 
-public class JtaTransactionManager extends org.springframework.transaction.jta.JtaTransactionManager{
+public class JtaTransactionManager extends org.springframework.transaction.jta.JtaTransactionManager 
+	implements TerminatedCommittingTransaction{
 
 	private static final long serialVersionUID = 1L;
+	
+	private static final Logger LOGGER = LoggerFactory.getLogger(JtaTransactionManager.class);
 
 	@Override
 	protected void doJtaBegin(JtaTransactionObject txObject, TransactionDefinition definition) 
@@ -84,6 +95,22 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 		InitiatorXATransactionLocal current = InitiatorXATransactionLocal.current();
 		if(current != null){
 			current.restoreThreadLocalStatus();
+		}
+	}
+
+	public void terminated(String tid) {
+		RecoveryLog log = Configuration.getRecoveryLog();
+		try {
+			Collection<ParticipantLogEntry> entries = log.getCommittingParticipants();
+			for (ParticipantLogEntry entry : entries) {
+				if(tid.equals(entry.coordinatorId) && entry.expires < System.currentTimeMillis()){
+					ParticipantLogEntry terminatedEntry = new ParticipantLogEntry(
+							entry.coordinatorId,entry.uri,entry.expires,entry.resourceName,TxState.TERMINATED);
+					log.terminated(terminatedEntry);
+				}
+			}
+		} catch (LogReadException e) {
+			LOGGER.error("JtaTransactionManager terminated committing transaction error", e);
 		}
 	}
 	
