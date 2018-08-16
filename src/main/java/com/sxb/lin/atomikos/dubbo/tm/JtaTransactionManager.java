@@ -5,8 +5,6 @@ import java.util.Collection;
 import javax.transaction.NotSupportedException;
 import javax.transaction.SystemException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.jta.JtaTransactionObject;
 import org.springframework.transaction.support.DefaultTransactionStatus;
@@ -27,8 +25,6 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 	implements TerminatedCommittingTransaction{
 
 	private static final long serialVersionUID = 1L;
-	
-	private static final Logger LOGGER = LoggerFactory.getLogger(JtaTransactionManager.class);
 
 	@Override
 	protected void doJtaBegin(JtaTransactionObject txObject, TransactionDefinition definition) 
@@ -36,10 +32,12 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 		
 		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
 		if(current == null){
+			this.checkInitiatorXATransactionLocal();
 			super.doJtaBegin(txObject, definition);
 			this.newInitiatorXATransactionLocal();
 		}else{
 			if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
+				this.checkInitiatorXATransactionLocal();
 				super.doJtaBegin(txObject, definition);
 				this.newInitiatorXATransactionLocal();
 				return;
@@ -54,6 +52,13 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 			current.active();
 		}
 		
+	}
+	
+	protected void checkInitiatorXATransactionLocal() throws NotSupportedException{
+		InitiatorXATransactionLocal current = InitiatorXATransactionLocal.current();
+		if(current != null){
+			throw new NotSupportedException("can not begin,dubbo xa transaction already exists.");
+		}
 	}
 	
 	protected void newInitiatorXATransactionLocal() {
@@ -110,7 +115,7 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 				}
 			}
 		} catch (LogReadException e) {
-			LOGGER.error("JtaTransactionManager terminated committing transaction error", e);
+			logger.error("JtaTransactionManager terminated committing transaction error", e);
 		}
 	}
 	

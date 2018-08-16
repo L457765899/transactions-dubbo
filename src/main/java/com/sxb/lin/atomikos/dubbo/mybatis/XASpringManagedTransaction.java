@@ -12,6 +12,8 @@ import org.mybatis.spring.transaction.SpringManagedTransaction;
 import com.atomikos.jdbc.AtomikosDataSourceBean;
 import com.sxb.lin.atomikos.dubbo.AtomikosDubboException;
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
+import com.sxb.lin.atomikos.dubbo.spring.XAConnectionHolder;
+import com.sxb.lin.atomikos.dubbo.spring.XADataSourceUtils;
 
 public class XASpringManagedTransaction extends SpringManagedTransaction{
 	

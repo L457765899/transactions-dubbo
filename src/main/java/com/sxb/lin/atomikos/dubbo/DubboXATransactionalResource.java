@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.transaction.xa.XAResource;
 
+import com.atomikos.datasource.RecoverableResource;
 import com.atomikos.datasource.ResourceException;
 import com.atomikos.datasource.TransactionalResource;
 import com.atomikos.datasource.xa.XATransactionalResource;
@@ -105,7 +106,7 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 		return now > entry.expires;
 	}
 	
-	public TransactionalResource createTransactionalResource(String uniqueResourceName,long timeout){
+	private TransactionalResource createTransactionalResource(String uniqueResourceName,long timeout){
 		recoverMap.remove(uniqueResourceName);
 		uniqueResourceNameMap.put(uniqueResourceName, timeout);
 		TransactionalResource transactionalResource = new TemporaryXATransactionalResource(uniqueResourceName);
@@ -114,4 +115,14 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 		return transactionalResource;
 	}
 	
+	public TransactionalResource findOrCreateTransactionalResource(String uniqueResourceName,long timeout) {
+		RecoverableResource resource = Configuration.getResource(uniqueResourceName);
+		TransactionalResource ret = null;
+		if(resource == null){
+			ret = this.createTransactionalResource(uniqueResourceName,timeout);
+		} else {
+			ret = (TransactionalResource) resource;
+		}
+		return ret;
+	}
 }

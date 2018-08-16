@@ -47,6 +47,8 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	
 	private String localAddress;
 	
+	private String uniqueResourceNames;
+	
 	private DubboTransactionManagerServiceProxy() {
 		
 	}
@@ -66,7 +68,7 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	
 	private void export(ApplicationConfig applicationConfig,RegistryConfig registryConfig,
 			ProtocolConfig protocolConfig,ProviderConfig providerConfig,Map<String,DataSource> dataSourceMapping){
-		String uniqueResourceNames = StringUtils.collectionToCommaDelimitedString(dataSourceMapping.keySet());
+		this.uniqueResourceNames = StringUtils.collectionToCommaDelimitedString(dataSourceMapping.keySet());
 		Map<String, String> parameters = new HashMap<String, String>();
 		parameters.put("uniqueResourceNames", uniqueResourceNames);
 		
@@ -138,6 +140,10 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	
 	public DubboXATransactionalResource getDubboXATransactionalResource() {
 		return dubboXATransactionalResource;
+	}
+	
+	public String getUniqueResourceNames() {
+		return uniqueResourceNames;
 	}
 
 	public StartXid enlistResource(String remoteAddress, String uniqueResourceName, String tid,

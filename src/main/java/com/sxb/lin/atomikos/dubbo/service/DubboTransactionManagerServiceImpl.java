@@ -9,7 +9,6 @@ import javax.transaction.xa.Xid;
 
 import org.springframework.util.StringUtils;
 
-import com.atomikos.datasource.RecoverableResource;
 import com.atomikos.datasource.TransactionalResource;
 import com.atomikos.datasource.xa.XAResourceTransaction;
 import com.atomikos.icatch.CompositeTransaction;
@@ -56,17 +55,6 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		}
 		return xids;
 	}
-	
-	private TransactionalResource findOrCreateTransactionalResource(String uniqueResourceName,long timeout) {
-		RecoverableResource resource = Configuration.getResource(uniqueResourceName);
-		TransactionalResource ret = null;
-		if(resource == null){
-			ret = dubboXATransactionalResource.createTransactionalResource(uniqueResourceName,timeout);
-		} else {
-			ret = (TransactionalResource) resource;
-		}
-		return ret;
-	}
 
 	public StartXid enlistResource(String remoteAddress, String uniqueResourceName, String tid, 
 			String localAddress) throws SystemException, RollbackException {
@@ -96,7 +84,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 
 		long startTime = System.currentTimeMillis();
 		long timeout = compositeTransaction.getTimeout() + 3000;
-		TransactionalResource res = this.findOrCreateTransactionalResource(uniqueResourceName,startTime + timeout);
+		TransactionalResource res = dubboXATransactionalResource.findOrCreateTransactionalResource(uniqueResourceName,startTime + timeout);
 		XAResourceTransaction restx = (XAResourceTransaction) res.getResourceTransaction(compositeTransaction);
 		restx.setXAResource(xaResource);
 		restx.resume();

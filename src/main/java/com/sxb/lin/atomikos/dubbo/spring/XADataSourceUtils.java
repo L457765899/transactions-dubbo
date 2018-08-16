@@ -1,4 +1,4 @@
-package com.sxb.lin.atomikos.dubbo.mybatis;
+package com.sxb.lin.atomikos.dubbo.spring;
 
 import java.sql.SQLException;
 
