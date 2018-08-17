@@ -27,12 +27,20 @@ public abstract class InitiatorXADataSourceUtils {
 		XAConnection xaConnection = xaDataSource.getXAConnection();
 		InitiatorXAConnectionHolder initiatorXAConnectionHolder = new InitiatorXAConnectionHolder(xaConnection);
 		initiatorXAConnectionHolder.start();
-		
-		TransactionSynchronizationManager.registerSynchronization(
-				new InitiatorXAConnectionSynchronization(initiatorXAConnectionHolder,xaDataSource));
 		TransactionSynchronizationManager.bindResource(xaDataSource, initiatorXAConnectionHolder);
-		
 		return initiatorXAConnectionHolder;
+	}
+	
+	public static void registerSynchronization(XADataSource xaDataSource){
+		Object resource = TransactionSynchronizationManager.getResource(xaDataSource);
+		if(resource instanceof InitiatorXAConnectionHolder){
+			InitiatorXAConnectionHolder initiatorXAConnectionHolder = (InitiatorXAConnectionHolder) resource;
+			if(!initiatorXAConnectionHolder.isSynchronizedWithTransaction()){
+				initiatorXAConnectionHolder.setSynchronizedWithTransaction(true);
+				TransactionSynchronizationManager.registerSynchronization(
+						new InitiatorXAConnectionSynchronization(initiatorXAConnectionHolder,xaDataSource));
+			}
+		}
 	}
 	
 	public static void releaseConnection(XAConnection xaConnection,XADataSource xaDataSource){

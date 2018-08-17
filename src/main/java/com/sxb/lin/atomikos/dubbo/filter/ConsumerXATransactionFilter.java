@@ -28,7 +28,7 @@ public class ConsumerXATransactionFilter implements Filter {
 			}
 			
 			ParticipantXATransactionLocal pcurrent = ParticipantXATransactionLocal.current();
-			if(pcurrent != null){
+			if(pcurrent != null && pcurrent.isActive()){
 				RpcContext context = RpcContext.getContext();
 				context.setAttachment(XA_TM_ADDRESS_KEY,pcurrent.getTmAddress());
 				context.setAttachment(XA_TID_KEY, pcurrent.getTid());

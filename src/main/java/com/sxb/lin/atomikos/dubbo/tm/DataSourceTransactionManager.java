@@ -24,6 +24,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.UnexpectedRollbackException;
 import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.atomikos.icatch.CompositeTransaction;
 import com.atomikos.icatch.CompositeTransactionManager;
@@ -37,6 +38,7 @@ import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.annotation.XA;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
 import com.sxb.lin.atomikos.dubbo.spring.InitiatorXADataSourceUtils;
+import com.sxb.lin.atomikos.dubbo.spring.XAConnectionHolder;
 import com.sxb.lin.atomikos.dubbo.spring.XAInvocationLocal;
 
 public class DataSourceTransactionManager extends org.springframework.jdbc.datasource.DataSourceTransactionManager 
@@ -208,15 +210,48 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 			}
 		}
 	}
+	
+	@Override
+	protected void prepareSynchronization(DefaultTransactionStatus status,
+			TransactionDefinition definition) {
+		super.prepareSynchronization(status, definition);
+		if (status.isNewSynchronization()) {
+			XADataSource xaDataSource = (XADataSource) this.getDataSource();
+			InitiatorXADataSourceUtils.registerSynchronization(xaDataSource);
+		}
+	}
+
+	@Override
+	protected boolean shouldCommitOnGlobalRollbackOnly() {
+		return true;
+	}
+	
+	@Override
+	protected void prepareForCommit(DefaultTransactionStatus status) {
+		JdbcTransactionObjectSupport transaction = (JdbcTransactionObjectSupport) status.getTransaction();
+		XADataSource xaDataSource = (XADataSource) this.getDataSource();
+		Object resource = TransactionSynchronizationManager.getResource(xaDataSource);
+		if(resource instanceof XAConnectionHolder){
+			XAConnectionHolder holder = (XAConnectionHolder) resource;
+			transaction.setConnectionHolder(holder);
+		}
+	}
 
 	protected boolean isUseJta(){
 		XAInvocationLocal current = XAInvocationLocal.current();
 		if(current != null){
 			Method method = current.getMethod();
-			XA annotation = method.getAnnotation(XA.class);
-			current.clear();
-			if(annotation != null){
-				return true;
+			try {
+				Method methodImpl = current.getTargetClass().getMethod(method.getName(), method.getParameterTypes());
+				XA annotation = methodImpl.getAnnotation(XA.class);
+				current.clear();
+				if(annotation != null){
+					return true;
+				}
+			} catch (NoSuchMethodException e) {
+				LOGGER.error(e.getMessage(),e);
+			} catch (SecurityException e) {
+				LOGGER.error(e.getMessage(),e);
 			}
 		}
 		return false;
