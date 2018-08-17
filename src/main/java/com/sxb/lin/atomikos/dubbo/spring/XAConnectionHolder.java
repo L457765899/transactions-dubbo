@@ -2,6 +2,7 @@ package com.sxb.lin.atomikos.dubbo.spring;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Savepoint;
 
 import javax.sql.XAConnection;
 import javax.transaction.RollbackException;
@@ -9,11 +10,12 @@ import javax.transaction.SystemException;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 
-import org.springframework.transaction.support.ResourceHolderSupport;
+import org.springframework.jdbc.datasource.ConnectionHolder;
+import org.springframework.transaction.NestedTransactionNotSupportedException;
 
 import com.sxb.lin.atomikos.dubbo.pool.XAResourceHolder;
 
-public class XAConnectionHolder extends ResourceHolderSupport{
+public class XAConnectionHolder extends ConnectionHolder{
 	
 	private String dubboUniqueResourceName;
 	
@@ -27,7 +29,7 @@ public class XAConnectionHolder extends ResourceHolderSupport{
 	
 	public XAConnectionHolder(XAConnection xaConnection,
 			String dubboUniqueResourceName) throws SQLException {
-		super();
+		super(xaConnection.getConnection());
 		this.dubboUniqueResourceName = dubboUniqueResourceName;
 		this.set(xaConnection);
 	}
@@ -49,6 +51,11 @@ public class XAConnectionHolder extends ResourceHolderSupport{
 			}
 		}
 	}
+	
+	@Override
+	public boolean hasConnection() {
+		return this.hasXAConnection();
+	}
 
 	public boolean hasXAConnection() {
 		return (this.xaConnection != null);
@@ -58,6 +65,7 @@ public class XAConnectionHolder extends ResourceHolderSupport{
 		return xaConnection;
 	}
 	
+	@Override
 	public Connection getConnection() {
 		return connection;
 	}
@@ -70,6 +78,17 @@ public class XAConnectionHolder extends ResourceHolderSupport{
 			String dubboUniqueResourceName) throws SQLException {
 		this.dubboUniqueResourceName = dubboUniqueResourceName;
 		this.set(xaConnection);
+	}
+	
+	@Override
+	public boolean supportsSavepoints() throws SQLException {
+		return false;
+	}
+
+	@Override
+	public Savepoint createSavepoint() throws SQLException {
+		throw new NestedTransactionNotSupportedException(
+				"Cannot create a nested transaction because savepoints are not supported by your JDBC driver");
 	}
 	
 	public void close() throws XAException{
@@ -86,5 +105,4 @@ public class XAConnectionHolder extends ResourceHolderSupport{
 		this.xaResourceHolder = null;
 	}
 
-	
 }

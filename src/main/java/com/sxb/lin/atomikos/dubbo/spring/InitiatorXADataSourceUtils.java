@@ -1,5 +1,6 @@
 package com.sxb.lin.atomikos.dubbo.spring;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 
 import javax.sql.XAConnection;
@@ -59,10 +60,17 @@ public abstract class InitiatorXADataSourceUtils {
 		}
 	}
 	
-	public static void closeConnection(InitiatorXAConnectionHolder connectionHolder) throws XAException{
+	public static void endConnection(InitiatorXAConnectionHolder connectionHolder) throws XAException{
 		if(connectionHolder != null){
-			connectionHolder.close();
+			connectionHolder.end();
 		}
+	}
+	
+	public static void closeConnection(InitiatorXAConnectionHolder connectionHolder) throws SQLException{
+		Connection connection = connectionHolder.getConnection();
+		connection.close();
+		XAConnection xaConnection = connectionHolder.getXaConnection();
+		xaConnection.close();
 	}
 	
 	private static boolean connectionEquals(InitiatorXAConnectionHolder conHolder,XAConnection xaConnection){
@@ -99,13 +107,14 @@ public abstract class InitiatorXADataSourceUtils {
 			if (!this.connectionHolder.isOpen()) {
 				TransactionSynchronizationManager.unbindResource(this.xaDataSource);
 				this.holderActive = false;
-				if (this.connectionHolder.hasConnection()) {
-					releaseConnection(this.connectionHolder.getXaConnection(), this.xaDataSource);
-					try {
-						closeConnection(this.connectionHolder);
-					} catch (XAException e) {
-						logger.error(e.getMessage(), e);
-					}
+			}
+				
+			if (this.connectionHolder.hasConnection()) {
+				releaseConnection(this.connectionHolder.getXaConnection(), this.xaDataSource);
+				try {
+					endConnection(this.connectionHolder);
+				} catch (XAException e) {
+					logger.error(e.getMessage(), e);
 				}
 			}
 		}
@@ -115,18 +124,16 @@ public abstract class InitiatorXADataSourceUtils {
 			if (this.holderActive) {
 				TransactionSynchronizationManager.unbindResourceIfPossible(this.xaDataSource);
 				this.holderActive = false;
-				if (this.connectionHolder.hasConnection()) {
-//					releaseConnection(this.connectionHolder.getXaConnection(), this.xaDataSource);
-//					try {
-//						closeConnection(this.connectionHolder);
-//						this.connectionHolder.setXaConnection(null,null);
-//					} catch (SQLException e) {
-//						logger.error(e.getMessage(), e);
-//					} catch (XAException e) {
-//						logger.error(e.getMessage(), e);
-//					}
+			}
+			
+			if (this.connectionHolder.hasConnection()) {
+				try {
+					closeConnection(connectionHolder);
+				} catch (SQLException e) {
+					logger.error(e.getMessage(), e);
 				}
 			}
+			
 			this.connectionHolder.reset();
 		}
 	}

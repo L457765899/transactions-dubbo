@@ -80,9 +80,4 @@ public class InitiatorXAConnectionHolder extends ConnectionHolder{
 		this.xaConnection = null;
 		this.xaResource = null;
 	}
-
-	public void close() {
-		this.end();
-	}
-	
 }

@@ -77,19 +77,22 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 	@Override
 	protected void doCommit(DefaultTransactionStatus status) {
 		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
-			try {
-				super.doCommit(status);
-			} finally {
-				this.restoreThreadLocalStatus();
-			}
+			super.doCommit(status);
 		}
 	}
 
 	@Override
 	protected void doRollback(DefaultTransactionStatus status) {
 		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
+			super.doRollback(status);
+		}
+	}
+	
+	@Override
+	protected void doCleanupAfterCompletion(Object transaction) {
+		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			try {
-				super.doRollback(status);
+				super.doCleanupAfterCompletion(transaction);
 			} finally {
 				this.restoreThreadLocalStatus();
 			}

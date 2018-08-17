@@ -112,11 +112,7 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 	protected void doCommit(DefaultTransactionStatus status) {
 		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			if(this.isUseInitiatorXATransactionLocal()){
-				try {
-					this.doJtaCommit();
-				} finally {
-					this.restoreThreadLocalStatus();
-				}
+				this.doJtaCommit();
 			}else{
 				super.doCommit(status);
 			}
@@ -170,11 +166,7 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 	protected void doRollback(DefaultTransactionStatus status) {
 		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			if(this.isUseInitiatorXATransactionLocal()){
-				try {
-					this.doJtaRollback();
-				} finally {
-					this.restoreThreadLocalStatus();
-				}
+				this.doJtaRollback();
 			}else{
 				super.doRollback(status);
 			}
@@ -203,6 +195,17 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		}
 		catch (SystemException ex) {
 			throw new TransactionSystemException("JTA failure on rollback", ex);
+		}
+	}
+	
+	@Override
+	protected void doCleanupAfterCompletion(Object transaction) {
+		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
+			if(this.isUseInitiatorXATransactionLocal()){
+				this.restoreThreadLocalStatus();
+			}else{
+				super.doCleanupAfterCompletion(transaction);
+			}
 		}
 	}
 
