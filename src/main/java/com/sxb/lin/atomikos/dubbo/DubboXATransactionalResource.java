@@ -16,10 +16,12 @@ import com.atomikos.icatch.config.Configuration;
 import com.atomikos.icatch.provider.TransactionServiceProvider;
 import com.atomikos.logging.Logger;
 import com.atomikos.logging.LoggerFactory;
+import com.atomikos.recovery.CoordinatorLogEntry;
 import com.atomikos.recovery.LogException;
 import com.atomikos.recovery.LogReadException;
 import com.atomikos.recovery.ParticipantLogEntry;
 import com.atomikos.recovery.RecoveryLog;
+import com.atomikos.recovery.imp.RecoveryLogImp;
 import com.atomikos.recovery.xa.XaResourceRecoveryManager;
 
 public class DubboXATransactionalResource extends XATransactionalResource{
@@ -91,9 +93,14 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 		for (ParticipantLogEntry entry : entries) {
 			if (expired(entry) && !http(entry)) {
 				LOGGER.logWarning("committing interrupted " + entry.toString());
-				ret.add(entry.resourceName);
+				if(!entry.resourceName.equals(entry.coordinatorId + entry.uri)){
+					ret.add(entry.resourceName);
+				}
 			}
 		}
+		RecoveryLogImp impl = (RecoveryLogImp) log;
+		CoordinatorLogEntry[] coordinatorLogEntries = impl.getCoordinatorLogEntries();
+		System.out.println(coordinatorLogEntries);
 		return ret;
 	}
 
