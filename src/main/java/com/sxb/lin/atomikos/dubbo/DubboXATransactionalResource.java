@@ -21,6 +21,7 @@ import com.atomikos.recovery.LogException;
 import com.atomikos.recovery.LogReadException;
 import com.atomikos.recovery.ParticipantLogEntry;
 import com.atomikos.recovery.RecoveryLog;
+import com.atomikos.recovery.TxState;
 import com.atomikos.recovery.imp.RecoveryLogImp;
 import com.atomikos.recovery.xa.XaResourceRecoveryManager;
 
@@ -32,10 +33,13 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 	
 	private Map<String,Long> recoverMap;
 	
-	public DubboXATransactionalResource() {
+	private Set<String> excludeResourceNames;
+	
+	public DubboXATransactionalResource(Set<String> excludeResourceNames) {
 		super("dubboXATransactionalResource");
-		uniqueResourceNameMap = new ConcurrentHashMap<String, Long>();
-		recoverMap = new ConcurrentHashMap<String, Long>();
+		this.uniqueResourceNameMap = new ConcurrentHashMap<String, Long>();
+		this.recoverMap = new ConcurrentHashMap<String, Long>();
+		this.excludeResourceNames = excludeResourceNames;
 	}
 
 	@Override
@@ -52,7 +56,7 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 	public void recover() {
 		
 		try {
-			Set<String> resourceNames = this.getExpiredCommittingResourceNames();
+			Set<String> resourceNames = this.getExpiredResourceNames();
 			for(String resourceName : recoverMap.keySet()){
 				Long timeout = recoverMap.get(resourceName);
 				if(timeout != null && timeout.longValue() <= System.currentTimeMillis()){
@@ -70,6 +74,9 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 				}
 				resourceNames.add(resourceName);
 			}
+			if(excludeResourceNames != null && excludeResourceNames.size() > 0){
+				resourceNames.removeAll(excludeResourceNames);
+			}
 			XaResourceRecoveryManager xaResourceRecoveryManager = XaResourceRecoveryManager.getInstance();
 			if (xaResourceRecoveryManager != null) {
 				for(String resourceName : resourceNames){
@@ -86,22 +93,34 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 		
 	}
 	
-	private Set<String> getExpiredCommittingResourceNames() throws LogReadException {
+	private Set<String> getExpiredResourceNames() throws LogReadException {
 		Set<String> ret = new HashSet<String>();
-		RecoveryLog log = Configuration.getRecoveryLog();
-		Collection<ParticipantLogEntry> entries = log.getCommittingParticipants();
+		Collection<ParticipantLogEntry> entries = this.getUnfinishedParticipants();
 		for (ParticipantLogEntry entry : entries) {
 			if (expired(entry) && !http(entry)) {
-				LOGGER.logWarning("committing interrupted " + entry.toString());
+				LOGGER.logWarning("xa command interrupted " + entry.toString());
 				if(!entry.resourceName.equals(entry.coordinatorId + entry.uri)){
 					ret.add(entry.resourceName);
 				}
 			}
 		}
+		
+		return ret;
+	}
+	
+	private Collection<ParticipantLogEntry> getUnfinishedParticipants(){
+		RecoveryLog log = Configuration.getRecoveryLog();
 		RecoveryLogImp impl = (RecoveryLogImp) log;
 		CoordinatorLogEntry[] coordinatorLogEntries = impl.getCoordinatorLogEntries();
-		System.out.println(coordinatorLogEntries);
-		return ret;
+		Collection<ParticipantLogEntry> allParticipants = new HashSet<ParticipantLogEntry>();
+		for (CoordinatorLogEntry coordinatorLogEntry : coordinatorLogEntries) {
+			if(coordinatorLogEntry.getResultingState() != TxState.TERMINATED){
+				for (ParticipantLogEntry participantLogEntry : coordinatorLogEntry.participants) {
+					allParticipants.add(participantLogEntry);
+				}
+			}
+		}
+		return allParticipants;
 	}
 
 	private boolean http(ParticipantLogEntry entry) {

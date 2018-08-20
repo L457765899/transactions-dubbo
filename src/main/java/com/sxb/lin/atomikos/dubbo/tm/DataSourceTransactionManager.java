@@ -2,7 +2,6 @@ package com.sxb.lin.atomikos.dubbo.tm;
 
 import java.lang.reflect.Method;
 import java.sql.SQLException;
-import java.util.Collection;
 
 import javax.sql.XADataSource;
 import javax.transaction.HeuristicMixedException;
@@ -29,10 +28,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import com.atomikos.icatch.CompositeTransaction;
 import com.atomikos.icatch.CompositeTransactionManager;
 import com.atomikos.icatch.config.Configuration;
-import com.atomikos.recovery.LogReadException;
-import com.atomikos.recovery.ParticipantLogEntry;
-import com.atomikos.recovery.RecoveryLog;
-import com.atomikos.recovery.TxState;
 import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.annotation.XA;
@@ -41,8 +36,7 @@ import com.sxb.lin.atomikos.dubbo.spring.InitiatorXADataSourceUtils;
 import com.sxb.lin.atomikos.dubbo.spring.XAConnectionHolder;
 import com.sxb.lin.atomikos.dubbo.spring.XAInvocationLocal;
 
-public class DataSourceTransactionManager extends org.springframework.jdbc.datasource.DataSourceTransactionManager 
-	implements TerminatedCommittingTransaction{
+public class DataSourceTransactionManager extends org.springframework.jdbc.datasource.DataSourceTransactionManager {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -289,22 +283,6 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		local.setTid(tid);
 		local.setTmAddress(instance.getLocalAddress());
 		local.bindToThread();
-	}
-
-	public void terminated(String tid) {
-		RecoveryLog log = Configuration.getRecoveryLog();
-		try {
-			Collection<ParticipantLogEntry> entries = log.getCommittingParticipants();
-			for (ParticipantLogEntry entry : entries) {
-				if(tid.equals(entry.coordinatorId) && entry.expires < System.currentTimeMillis()){
-					ParticipantLogEntry terminatedEntry = new ParticipantLogEntry(
-							entry.coordinatorId,entry.uri,entry.expires,entry.resourceName,TxState.TERMINATED);
-					log.terminated(terminatedEntry);
-				}
-			}
-		} catch (LogReadException e) {
-			LOGGER.error("DataSourceTransactionManager terminated committing transaction error", e);
-		}
 	}
 	
 	@Override

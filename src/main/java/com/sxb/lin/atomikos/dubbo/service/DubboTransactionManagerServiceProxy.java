@@ -2,6 +2,7 @@ package com.sxb.lin.atomikos.dubbo.service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import javax.sql.DataSource;
 import javax.transaction.RollbackException;
@@ -55,11 +56,11 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	
 	public void init(ApplicationConfig applicationConfig,RegistryConfig registryConfig,
 			ProtocolConfig protocolConfig,ProviderConfig providerConfig,ConsumerConfig consumerConfig,
-			Map<String,DataSource> dataSourceMapping){
+			Map<String,DataSource> dataSourceMapping,Set<String> excludeResourceNames){
 		if(inited){
 			return;
 		}
-		dubboXATransactionalResource = new DubboXATransactionalResource();
+		dubboXATransactionalResource = new DubboXATransactionalResource(excludeResourceNames);
 		this.export(applicationConfig, registryConfig, protocolConfig, providerConfig,dataSourceMapping);
 		this.reference(applicationConfig, registryConfig, consumerConfig);
 		inited = true;

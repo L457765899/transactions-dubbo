@@ -1,7 +1,5 @@
 package com.sxb.lin.atomikos.dubbo.tm;
 
-import java.util.Collection;
-
 import javax.transaction.NotSupportedException;
 import javax.transaction.SystemException;
 
@@ -12,17 +10,12 @@ import org.springframework.transaction.support.DefaultTransactionStatus;
 import com.atomikos.icatch.CompositeTransaction;
 import com.atomikos.icatch.CompositeTransactionManager;
 import com.atomikos.icatch.config.Configuration;
-import com.atomikos.recovery.LogReadException;
-import com.atomikos.recovery.ParticipantLogEntry;
-import com.atomikos.recovery.RecoveryLog;
-import com.atomikos.recovery.TxState;
 import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
 
 
-public class JtaTransactionManager extends org.springframework.transaction.jta.JtaTransactionManager 
-	implements TerminatedCommittingTransaction{
+public class JtaTransactionManager extends org.springframework.transaction.jta.JtaTransactionManager {
 
 	private static final long serialVersionUID = 1L;
 
@@ -103,22 +96,6 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 		InitiatorXATransactionLocal current = InitiatorXATransactionLocal.current();
 		if(current != null){
 			current.restoreThreadLocalStatus();
-		}
-	}
-
-	public void terminated(String tid) {
-		RecoveryLog log = Configuration.getRecoveryLog();
-		try {
-			Collection<ParticipantLogEntry> entries = log.getCommittingParticipants();
-			for (ParticipantLogEntry entry : entries) {
-				if(tid.equals(entry.coordinatorId) && entry.expires < System.currentTimeMillis()){
-					ParticipantLogEntry terminatedEntry = new ParticipantLogEntry(
-							entry.coordinatorId,entry.uri,entry.expires,entry.resourceName,TxState.TERMINATED);
-					log.terminated(terminatedEntry);
-				}
-			}
-		} catch (LogReadException e) {
-			logger.error("JtaTransactionManager terminated committing transaction error", e);
 		}
 	}
 	
