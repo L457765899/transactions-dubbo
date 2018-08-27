@@ -32,9 +32,9 @@ import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.annotation.XA;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
-import com.sxb.lin.atomikos.dubbo.spring.InitiatorXADataSourceUtils;
-import com.sxb.lin.atomikos.dubbo.spring.XAConnectionHolder;
 import com.sxb.lin.atomikos.dubbo.spring.XAInvocationLocal;
+import com.sxb.lin.atomikos.dubbo.spring.jdbc.InitiatorXADataSourceUtils;
+import com.sxb.lin.atomikos.dubbo.spring.jdbc.XAConnectionHolder;
 
 public class DataSourceTransactionManager extends org.springframework.jdbc.datasource.DataSourceTransactionManager {
 

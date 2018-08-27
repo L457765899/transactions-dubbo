@@ -1,4 +1,4 @@
-package com.sxb.lin.atomikos.dubbo.spring;
+package com.sxb.lin.atomikos.dubbo.spring.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -13,6 +13,7 @@ import javax.transaction.xa.XAResource;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.NestedTransactionNotSupportedException;
 
+import com.sxb.lin.atomikos.dubbo.pool.JdbcXAResourceHolder;
 import com.sxb.lin.atomikos.dubbo.pool.XAResourceHolder;
 
 public class XAConnectionHolder extends ConnectionHolder{
@@ -39,7 +40,7 @@ public class XAConnectionHolder extends ConnectionHolder{
 		if(xaConnection != null){
 			this.connection = xaConnection.getConnection();
 			this.xaResource = xaConnection.getXAResource();
-			this.xaResourceHolder = new XAResourceHolder(dubboUniqueResourceName, xaConnection, connection, xaResource);
+			this.xaResourceHolder = new JdbcXAResourceHolder(dubboUniqueResourceName, xaConnection, connection, xaResource);
 			try {
 				this.xaResourceHolder.start();
 			} catch (XAException e) {

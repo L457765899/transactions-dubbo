@@ -1,4 +1,4 @@
-package com.sxb.lin.atomikos.dubbo.spring;
+package com.sxb.lin.atomikos.dubbo.spring.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
