@@ -3,6 +3,7 @@ package com.sxb.lin.atomikos.dubbo.spring.jdbc;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Savepoint;
+import java.util.UUID;
 
 import javax.sql.XAConnection;
 import javax.transaction.RollbackException;
@@ -36,11 +37,19 @@ public class XAConnectionHolder extends ConnectionHolder{
 	}
 	
 	private void set(XAConnection xaConnection) throws SQLException {
-		this.xaConnection = xaConnection;
-		if(xaConnection != null){
+		if(xaConnection == null){
+			this.xaConnection = null;
+			this.connection = null;
+			this.xaResource = null;
+			this.xaResourceHolder = null;
+		}else{
 			this.connection = xaConnection.getConnection();
 			this.xaResource = xaConnection.getXAResource();
-			this.xaResourceHolder = new JdbcXAResourceHolder(dubboUniqueResourceName, xaConnection, connection, xaResource);
+			
+			String connStr = connection.toString();
+			String uuid = UUID.nameUUIDFromBytes(connStr.getBytes()).toString();
+			this.xaResourceHolder = new JdbcXAResourceHolder(
+					dubboUniqueResourceName, uuid, xaConnection, connection, xaResource);
 			try {
 				this.xaResourceHolder.start();
 			} catch (XAException e) {
@@ -92,7 +101,7 @@ public class XAConnectionHolder extends ConnectionHolder{
 				"Cannot create a nested transaction because savepoints are not supported by your JDBC driver");
 	}
 	
-	public void close() throws XAException{
+	public void end() throws XAException{
 		this.xaResourceHolder.end();
 	}
 

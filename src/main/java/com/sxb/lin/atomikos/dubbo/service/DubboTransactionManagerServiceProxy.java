@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import javax.sql.DataSource;
 import javax.transaction.RollbackException;
 import javax.transaction.SystemException;
 import javax.transaction.xa.XAException;
@@ -25,6 +24,7 @@ import com.atomikos.logging.LoggerFactory;
 import com.sxb.lin.atomikos.dubbo.AtomikosDubboException;
 import com.sxb.lin.atomikos.dubbo.DubboXATransactionalResource;
 import com.sxb.lin.atomikos.dubbo.pool.XAResourcePool;
+import com.sxb.lin.atomikos.dubbo.pool.recover.UniqueResource;
 
 public class DubboTransactionManagerServiceProxy implements DubboTransactionManagerService{
 	
@@ -56,24 +56,24 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	
 	public void init(ApplicationConfig applicationConfig,RegistryConfig registryConfig,
 			ProtocolConfig protocolConfig,ProviderConfig providerConfig,ConsumerConfig consumerConfig,
-			Map<String,DataSource> dataSourceMapping,Set<String> excludeResourceNames){
+			Map<String,UniqueResource> uniqueResourceMapping,Set<String> excludeResourceNames){
 		if(inited){
 			return;
 		}
 		dubboXATransactionalResource = new DubboXATransactionalResource(excludeResourceNames);
-		this.export(applicationConfig, registryConfig, protocolConfig, providerConfig,dataSourceMapping);
+		this.export(applicationConfig, registryConfig, protocolConfig, providerConfig,uniqueResourceMapping);
 		this.reference(applicationConfig, registryConfig, consumerConfig);
 		inited = true;
 		Configuration.addResource(dubboXATransactionalResource);
 	}
 	
 	private void export(ApplicationConfig applicationConfig,RegistryConfig registryConfig,
-			ProtocolConfig protocolConfig,ProviderConfig providerConfig,Map<String,DataSource> dataSourceMapping){
-		this.uniqueResourceNames = StringUtils.collectionToCommaDelimitedString(dataSourceMapping.keySet());
+			ProtocolConfig protocolConfig,ProviderConfig providerConfig,Map<String,UniqueResource> uniqueResourceMapping){
+		this.uniqueResourceNames = StringUtils.collectionToCommaDelimitedString(uniqueResourceMapping.keySet());
 		Map<String, String> parameters = new HashMap<String, String>();
 		parameters.put("uniqueResourceNames", uniqueResourceNames);
 		
-		xaResourcePool = new XAResourcePool(dataSourceMapping);
+		xaResourcePool = new XAResourcePool(uniqueResourceMapping);
 		DubboTransactionManagerServiceImpl dubboTransactionManagerService = 
 				new DubboTransactionManagerServiceImpl(xaResourcePool,dubboXATransactionalResource);
 		ServiceConfig<DubboTransactionManagerService> serviceConfig = new ServiceConfig<DubboTransactionManagerService>();

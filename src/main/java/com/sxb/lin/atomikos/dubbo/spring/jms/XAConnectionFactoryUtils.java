@@ -7,14 +7,20 @@ import javax.jms.Session;
 import javax.jms.XAConnection;
 import javax.jms.XAConnectionFactory;
 import javax.jms.XASession;
+import javax.transaction.xa.XAException;
 
 import org.apache.activemq.pool.PooledConnection;
 import org.apache.activemq.pool.PooledConnectionFactory;
-import org.springframework.transaction.support.ResourceHolderSynchronization;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
 
 public abstract class XAConnectionFactoryUtils {
+	
+	private static final Log logger = LogFactory.getLog(XAConnectionFactoryUtils.class);
 
 	public static Session doGetTransactionalSession(ConnectionFactory connectionFactory, 
 			boolean startConnection, JmsTemplate jmsTemplate) throws JMSException {
@@ -43,16 +49,18 @@ public abstract class XAConnectionFactoryUtils {
 				connection = pooledConnection;
 				XAConnection con = (XAConnection) pooledConnection.getConnection();
 				session = con.createXASession();
-				resourceHolder = new XAJmsResourceHolder(connectionFactory, con, session);
+				resourceHolder = new XAJmsResourceHolder(
+						connectionFactory, pooledConnection, session, jmsTemplate.getDubboUniqueResourceName());
 				
 				if (startConnection) {
-					con.start();
+					pooledConnection.start();
 				}
 			}else if (connectionFactory instanceof XAConnectionFactory){
 				XAConnection con = ((XAConnectionFactory)connectionFactory).createXAConnection();
 				connection = con;
 				session = con.createXASession();
-				resourceHolder = new XAJmsResourceHolder(connectionFactory, con, session);
+				resourceHolder = new XAJmsResourceHolder(
+						connectionFactory, con, session, jmsTemplate.getDubboUniqueResourceName());
 				
 				if (startConnection) {
 					con.start();
@@ -90,15 +98,49 @@ public abstract class XAConnectionFactoryUtils {
 		return session;
 	}
 	
-	private static class XAJmsResourceSynchronization extends ResourceHolderSynchronization<XAJmsResourceHolder, Object> {
+	private static class XAJmsResourceSynchronization extends TransactionSynchronizationAdapter {
+		
+		private XAJmsResourceHolder resourceHolder;
+		
+		private ConnectionFactory connectionFactory;
+		
+		private boolean holderActive = true;
 
-		public XAJmsResourceSynchronization(XAJmsResourceHolder resourceHolder, Object resourceKey) {
-			super(resourceHolder, resourceKey);
+		public XAJmsResourceSynchronization(
+				XAJmsResourceHolder resourceHolder, ConnectionFactory connectionFactory) {
+			super();
+			this.resourceHolder = resourceHolder;
+			this.connectionFactory = connectionFactory;
 		}
 
 		@Override
-		protected void releaseResource(XAJmsResourceHolder resourceHolder, Object resourceKey) {
-			resourceHolder.closeAll();
+		public int getOrder() {
+			return DataSourceUtils.CONNECTION_SYNCHRONIZATION_ORDER;
+		}
+		
+		@Override
+		public void beforeCompletion() {
+			TransactionSynchronizationManager.unbindResource(this.connectionFactory);
+			this.holderActive = false;
+			try {
+				this.resourceHolder.end();
+			} catch (XAException e) {
+				logger.error(e.getMessage(), e);
+			}
+		}
+		
+		@Override
+		public void afterCompletion(int status) {
+			if (this.holderActive) {
+				this.holderActive = false;
+				TransactionSynchronizationManager.unbindResourceIfPossible(this.connectionFactory);
+				try {
+					this.resourceHolder.end();
+				} catch (XAException e) {
+					logger.error(e.getMessage(), e);
+				}
+			}
+			this.resourceHolder.reset();
 		}
 	}
 }

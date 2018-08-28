@@ -75,9 +75,9 @@ public abstract class XADataSourceUtils {
 		}
 	}
 	
-	public static void closeConnection(XAConnectionHolder connectionHolder) throws XAException{
+	public static void endConnection(XAConnectionHolder connectionHolder) throws XAException{
 		if(connectionHolder != null){
-			connectionHolder.close();
+			connectionHolder.end();
 		}
 	}
 	
@@ -117,7 +117,7 @@ public abstract class XADataSourceUtils {
 				if (this.connectionHolder.hasXAConnection()) {
 					releaseConnection(this.connectionHolder.getXaConnection(), this.xaDataSource);
 					try {
-						closeConnection(this.connectionHolder);
+						endConnection(this.connectionHolder);
 					} catch (XAException e) {
 						logger.error(e.getMessage(), e);
 					}
@@ -133,7 +133,7 @@ public abstract class XADataSourceUtils {
 				if (this.connectionHolder.hasXAConnection()) {
 					releaseConnection(this.connectionHolder.getXaConnection(), this.xaDataSource);
 					try {
-						closeConnection(this.connectionHolder);
+						endConnection(this.connectionHolder);
 						this.connectionHolder.setXaConnection(null,null);
 					} catch (SQLException e) {
 						logger.error(e.getMessage(), e);

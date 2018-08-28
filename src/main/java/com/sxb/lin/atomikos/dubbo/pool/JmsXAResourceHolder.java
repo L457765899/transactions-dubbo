@@ -1,64 +1,38 @@
 package com.sxb.lin.atomikos.dubbo.pool;
 
-import javax.transaction.RollbackException;
-import javax.transaction.SystemException;
-import javax.transaction.xa.XAException;
-import javax.transaction.xa.Xid;
+import javax.transaction.xa.XAResource;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.sxb.lin.atomikos.dubbo.spring.jms.XAJmsResourceHolder;
 
-import com.sxb.lin.atomikos.dubbo.service.StartXid;
-
-public class JmsXAResourceHolder implements XAResourceHolder{
+public class JmsXAResourceHolder extends XAResourceHolder{
 	
-	private static final Logger LOGGER = LoggerFactory.getLogger(JmsXAResourceHolder.class);
+	private XAJmsResourceHolder xaJmsResourceHolder;
+	
+	public JmsXAResourceHolder(String dubboUniqueResourceName, 
+			String uuid, XAResource xaResource, XAJmsResourceHolder xaJmsResourceHolder) {
+		super(dubboUniqueResourceName, uuid, xaResource);
+		this.xaJmsResourceHolder = xaJmsResourceHolder;
+	}
+
+	@Override
+	protected void disconnect() {
+		this.doClose();
+	}
+
+	@Override
+	protected void doClose() {
+		try {
+			xaJmsResourceHolder.closeAll();
+		} finally {
+			this.clear();
+		}
+	}
+
+	@Override
+	protected void clear() {
+		super.clear();
+		this.xaJmsResourceHolder = null;
+	}
 	
 	
-
-	public void start() throws XAException, SystemException, RollbackException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void end() throws XAException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public int prepare(Xid xid) throws XAException {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	public void commit(Xid xid, boolean onePhase) throws XAException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void rollback(Xid xid) throws XAException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public String getUuid() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public StartXid getStartXid() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public String getTmAddress() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public void close() {
-		// TODO Auto-generated method stub
-		
-	}
-
 }

@@ -11,9 +11,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import javax.sql.DataSource;
-import javax.sql.XAConnection;
-import javax.sql.XADataSource;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
@@ -21,23 +18,24 @@ import javax.transaction.xa.Xid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.atomikos.jdbc.AtomikosDataSourceBean;
+import com.sxb.lin.atomikos.dubbo.pool.recover.RecoverXAResource;
+import com.sxb.lin.atomikos.dubbo.pool.recover.UniqueResource;
 import com.sxb.lin.atomikos.dubbo.service.StartXid;
 
 public class XAResourcePool implements Runnable{
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(XAResourcePool.class);
 
-	private Map<String,DataSource> dataSourceMapping;
+	private Map<String,UniqueResource> uniqueResourceMapping;
 	
 	private Map<Xid,XAResourceHolder> cachePool = new ConcurrentHashMap<Xid, XAResourceHolder>();
 	
 	private ScheduledExecutorService scheduledExecutorService;
 	
 	
-	public XAResourcePool(Map<String, DataSource> dataSourceMapping) {
+	public XAResourcePool(Map<String, UniqueResource> uniqueResourceMapping) {
 		super();
-		this.dataSourceMapping = dataSourceMapping;
+		this.uniqueResourceMapping = uniqueResourceMapping;
 		this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 		scheduledExecutorService.scheduleAtFixedRate(this, 30, 30, TimeUnit.SECONDS);
 	}
@@ -62,47 +60,37 @@ public class XAResourcePool implements Runnable{
 		return list;
 	}
 	
-	protected XAConnection getXAConnection(String uniqueResourceName) throws SQLException{
-		if(dataSourceMapping == null){
+	protected RecoverXAResource getRecoverXAResource(String uniqueResourceName) throws SQLException{
+		if(uniqueResourceMapping == null){
 			return null;
 		}
-		DataSource dataSource = dataSourceMapping.get(uniqueResourceName);
-		XADataSource xaDataSource = null;
-		if(dataSource instanceof XADataSource){
-			xaDataSource = (XADataSource) dataSource;
-		}else if(dataSource instanceof AtomikosDataSourceBean){
-			xaDataSource = ((AtomikosDataSourceBean) dataSource).getXaDataSource();
-		}
-		if(xaDataSource == null){
+		UniqueResource uniqueResource = uniqueResourceMapping.get(uniqueResourceName);
+		if(uniqueResource == null){
 			return null;
 		}
 		
-		return xaDataSource.getXAConnection();
+		return uniqueResource.getRecoverXAResource();
 	}
 	
-	protected void closeXAConnection(XAConnection xaConnection){
-		if(xaConnection != null){
-			try {
-				xaConnection.close();
-			} catch (SQLException e) {
-				LOGGER.error(e.getMessage(), e);
-			}
+	protected void closeRecoverXAResource(RecoverXAResource recoverXAResource){
+		if(recoverXAResource != null){
+			recoverXAResource.close();
 		}
 	}
 	
 	public Xid[] recover(int flag, String uniqueResourceName) throws XAException {
 		
-		XAConnection xaConnection = null;
+		RecoverXAResource recoverXAResource = null;
 		try {
-			xaConnection = this.getXAConnection(uniqueResourceName);
-			if(xaConnection != null){
-				XAResource xaResource = xaConnection.getXAResource();
+			recoverXAResource = this.getRecoverXAResource(uniqueResourceName);
+			if(recoverXAResource != null){
+				XAResource xaResource = recoverXAResource.getXAResource();
 				return xaResource.recover(flag);
 			}
 		} catch (SQLException e) {
 			LOGGER.error(e.getMessage(), e);
 		} finally {
-			this.closeXAConnection(xaConnection);
+			this.closeRecoverXAResource(recoverXAResource);
 		}
 		
 		return null;
@@ -124,11 +112,11 @@ public class XAResourcePool implements Runnable{
 			this.removeXAResourceHolder(xaResourceHolder);
 			xaResourceHolder.close();
 		}else{
-			XAConnection xaConnection = null;
+			RecoverXAResource recoverXAResource = null;
 			try {
-				xaConnection = this.getXAConnection(uniqueResourceName);
-				if(xaConnection != null){
-					XAResource xaResource = xaConnection.getXAResource();
+				recoverXAResource = this.getRecoverXAResource(uniqueResourceName);
+				if(recoverXAResource != null){
+					XAResource xaResource = recoverXAResource.getXAResource();
 					xaResource.commit(xid, onePhase);
 				}else{
 					throw new XAException("XAResourceHolder or XAConnection is not exist.");
@@ -136,7 +124,7 @@ public class XAResourcePool implements Runnable{
 			} catch (SQLException e) {
 				LOGGER.error(e.getMessage(), e);
 			} finally {
-				this.closeXAConnection(xaConnection);
+				this.closeRecoverXAResource(recoverXAResource);
 			}
 		}
 	}
@@ -148,11 +136,11 @@ public class XAResourcePool implements Runnable{
 			this.removeXAResourceHolder(xaResourceHolder);
 			xaResourceHolder.close();
 		}else{
-			XAConnection xaConnection = null;
+			RecoverXAResource recoverXAResource = null;
 			try {
-				xaConnection = this.getXAConnection(uniqueResourceName);
-				if(xaConnection != null){
-					XAResource xaResource = xaConnection.getXAResource();
+				recoverXAResource = this.getRecoverXAResource(uniqueResourceName);
+				if(recoverXAResource != null){
+					XAResource xaResource = recoverXAResource.getXAResource();
 					xaResource.rollback(xid);
 				}else{
 					throw new XAException("XAResourceHolder or XAConnection is not exist.");
@@ -160,7 +148,7 @@ public class XAResourcePool implements Runnable{
 			} catch (SQLException e) {
 				LOGGER.error(e.getMessage(), e);
 			} finally {
-				this.closeXAConnection(xaConnection);
+				this.closeRecoverXAResource(recoverXAResource);
 			}
 		}
 	}
