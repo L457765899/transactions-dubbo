@@ -66,7 +66,8 @@ public abstract class XAResourceHolder {
 			XAResourcePool xaResourcePool = instance.getXaResourcePool();
 			xaResourcePool.addXAResourceHolder(this);
 		}else{
-			throw new XAException("xaResource can not xa satrt,currentStatus value "+currentStatus+" is error.");
+			throw new XAException("xaResource can not xa satrt,currentStatus value " 
+					+ this.getStrCurrentStatus(currentStatus) + " is error.");
 		}
 	}
 	
@@ -79,7 +80,8 @@ public abstract class XAResourceHolder {
 		}else if(this.currentStatus == XA_UNKNOWN){
 			this.close();
 		}else{
-			throw new XAException("xaResource can not xa end,currentStatus value "+currentStatus+" is error.");
+			throw new XAException("xaResource can not xa end,currentStatus value " 
+					+ this.getStrCurrentStatus(currentStatus) + " is error.");
 		}
 	}
 	
@@ -94,7 +96,8 @@ public abstract class XAResourceHolder {
 			this.currentStatus = XA_PREPARE;
 			return prepare;
 		}else{
-			throw new XAException("xaResource can not xa prepare,currentStatus value "+currentStatus+" is error.");
+			throw new XAException("xaResource can not xa prepare,currentStatus value " 
+					+ this.getStrCurrentStatus(currentStatus) + " is error.");
 		}
 	}
 	
@@ -117,7 +120,8 @@ public abstract class XAResourceHolder {
 			this.xaResource.commit(xid, onePhase);
 			this.currentStatus = XA_COMMIT;
 		}else{
-			throw new XAException("xaResource can not xa commit,currentStatus value "+currentStatus+" is error.");
+			throw new XAException("xaResource can not xa commit,currentStatus value " 
+					+ this.getStrCurrentStatus(currentStatus) + " is error.");
 		}
 	}
 	
@@ -134,7 +138,8 @@ public abstract class XAResourceHolder {
 			this.xaResource.rollback(xid);
 			this.currentStatus = XA_ROLLBACK;
 		}else{
-			throw new XAException("xaResource can not xa rollback,currentStatus value "+currentStatus+" is error.");
+			throw new XAException("xaResource can not xa rollback,currentStatus value " 
+					+ this.getStrCurrentStatus(currentStatus) + " is error.");
 		}
 	}
 	
@@ -193,6 +198,37 @@ public abstract class XAResourceHolder {
 		}else{
 			this.doClose();
 		}
+	}
+	
+	protected String getStrCurrentStatus(int currentStatus){
+		String str = null;
+		switch (currentStatus) {
+		case XA_UNKNOWN:
+			str = "XA_UNKNOWN";
+			break;
+		case XA_START:
+			str = "XA_START";
+			break;
+		case XA_END:
+			str = "XA_END";
+			break;
+		case XA_PREPARE:
+			str = "XA_PREPARE";
+			break;
+		case XA_COMMIT:
+			str = "XA_COMMIT";
+			break;
+		case XA_ROLLBACK:
+			str = "XA_ROLLBACK";
+			break;
+		case CLOSE:
+			str = "CLOSE";
+			break;
+		default:
+			str = "ERROR";
+			break;
+		}
+		return str;
 	}
 	
 	protected void clear(){

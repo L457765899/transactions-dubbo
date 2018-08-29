@@ -22,6 +22,8 @@ public class InitiatorXAConnectionHolder extends ConnectionHolder{
 	private XAConnection xaConnection;
 	
 	private XAResource xaResource;
+	
+	private XAResourceTransaction xaResourceTransaction;
 
 	public InitiatorXAConnectionHolder(XAConnection xaConnection) 
 			throws SQLException {
@@ -42,22 +44,22 @@ public class InitiatorXAConnectionHolder extends ConnectionHolder{
 		this.setTransactionActive(true);
 		CompositeTransactionManager compositeTransactionManager = Configuration.getCompositeTransactionManager();
 		CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction();
+		long startTime = System.currentTimeMillis();
 		long timeout = compositeTransaction.getTimeout() + 3000;
 		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
 		DubboXATransactionalResource dubboXATransactionalResource = instance.getDubboXATransactionalResource();
 		TransactionalResource res = 
-				dubboXATransactionalResource.findOrCreateTransactionalResource(instance.getFirstUniqueResourceName(), timeout);
+				dubboXATransactionalResource.findOrCreateTransactionalResource(instance.getFirstUniqueResourceName(), startTime + timeout);
 		XAResourceTransaction restx = (XAResourceTransaction) res.getResourceTransaction(compositeTransaction);
 		restx.setXAResource(xaResource);
 		restx.resume();
+		this.xaResourceTransaction = restx;
 	}
 
 	public void end(){
-		
+		xaResourceTransaction.suspend();
 	}
 	
-	
-
 	@Override
 	public boolean hasConnection() {
 		return (this.xaConnection != null);
@@ -79,5 +81,6 @@ public class InitiatorXAConnectionHolder extends ConnectionHolder{
 		super.reset();
 		this.xaConnection = null;
 		this.xaResource = null;
+		this.xaResourceTransaction = null;
 	}
 }

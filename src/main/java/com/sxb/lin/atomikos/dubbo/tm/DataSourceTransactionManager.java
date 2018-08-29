@@ -203,6 +203,11 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 				super.doCleanupAfterCompletion(transaction);
 			}
 		}
+		
+		XAInvocationLocal current = XAInvocationLocal.current();
+		if(current != null){
+			current.clear();
+		}
 	}
 	
 	@Override

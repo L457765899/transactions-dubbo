@@ -11,6 +11,12 @@ import org.springframework.util.Assert;
 
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
 
+/**
+ * do not use this JtaJmsTemplate,in an environment without jta transactions.
+ * use JmsTemplate in an environment without jta transactions.
+ * @author llb
+ *
+ */
 public class JtaJmsTemplate extends JmsTemplate {
 	
 	private String dubboUniqueResourceName;

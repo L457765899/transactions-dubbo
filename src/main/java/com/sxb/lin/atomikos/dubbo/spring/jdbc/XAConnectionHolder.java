@@ -37,8 +37,8 @@ public class XAConnectionHolder extends ConnectionHolder{
 	}
 	
 	private void set(XAConnection xaConnection) throws SQLException {
+		this.xaConnection = xaConnection;
 		if(xaConnection == null){
-			this.xaConnection = null;
 			this.connection = null;
 			this.xaResource = null;
 			this.xaResourceHolder = null;
