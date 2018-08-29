@@ -46,7 +46,7 @@ public class InitiatorXAConnectionHolder extends ConnectionHolder{
 		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
 		DubboXATransactionalResource dubboXATransactionalResource = instance.getDubboXATransactionalResource();
 		TransactionalResource res = 
-				dubboXATransactionalResource.findOrCreateTransactionalResource(instance.getUniqueResourceNames(), timeout);
+				dubboXATransactionalResource.findOrCreateTransactionalResource(instance.getFirstUniqueResourceName(), timeout);
 		XAResourceTransaction restx = (XAResourceTransaction) res.getResourceTransaction(compositeTransaction);
 		restx.setXAResource(xaResource);
 		restx.resume();

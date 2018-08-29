@@ -23,7 +23,7 @@ public abstract class XAConnectionFactoryUtils {
 	private static final Log logger = LogFactory.getLog(XAConnectionFactoryUtils.class);
 
 	public static Session doGetTransactionalSession(ConnectionFactory connectionFactory, 
-			boolean startConnection, JmsTemplate jmsTemplate) throws JMSException {
+			boolean startConnection, JtaJmsTemplate jmsTemplate) throws JMSException {
 		
 		Assert.notNull(connectionFactory, "ConnectionFactory must not be null");
 		

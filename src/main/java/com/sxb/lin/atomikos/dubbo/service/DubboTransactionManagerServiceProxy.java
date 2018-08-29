@@ -146,6 +146,11 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	public String getUniqueResourceNames() {
 		return uniqueResourceNames;
 	}
+	
+	public String getFirstUniqueResourceName(){
+		String[] array = uniqueResourceNames.split(",");
+		return array[0];
+	}
 
 	public StartXid enlistResource(String remoteAddress, String uniqueResourceName, String tid,
 			String localAddress) throws SystemException, RollbackException {
