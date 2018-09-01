@@ -18,7 +18,7 @@ public abstract class MQProducerUtils {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(MQProducerUtils.class);
 
-	public static MQMessagesHolder getMQMessagesHolder(MQProducerFor2PC producer){
+	public static MQMessagesHolder getMQMessagesHolderToLocal(MQProducerFor2PC producer){
 		
 		MQMessagesHolder mqmHolder = (MQMessagesHolder) TransactionSynchronizationManager.getResource(producer);
 		if(mqmHolder != null){
@@ -26,35 +26,51 @@ public abstract class MQProducerUtils {
 		}
 		
 		mqmHolder = new MQMessagesHolder();
-		TransactionSynchronizationManager.registerSynchronization(new MQMessagesSynchronization(producer, mqmHolder));
+		TransactionSynchronizationManager.registerSynchronization(new LocalMQMessagesSynchronization(producer, mqmHolder));
 		TransactionSynchronizationManager.bindResource(producer, mqmHolder);
 		return mqmHolder;
 	}
 	
-	public static void send(MQProducerFor2PC producer, List<Message> messages){
-		try {
-			
-			SendResult sendResult = null;
-			if(messages.size() == 1){
-				sendResult = producer.send(messages.get(0));
-			} else{
-				sendResult = producer.send(messages);
-			}
-			if(sendResult.getSendStatus() != SendStatus.SEND_OK){
-				LOGGER.error("sendMessageAfterTransaction fail " + sendResult.toString());
-			}
-		} catch (MQClientException e) {
-			LOGGER.error("sendMessageAfterTransaction error." + e.getMessage(), e);
-		} catch (RemotingException e) {
-			LOGGER.error("sendMessageAfterTransaction error." + e.getMessage(), e);
-		} catch (MQBrokerException e) {
-			LOGGER.error("sendMessageAfterTransaction error." + e.getMessage(), e);
-		} catch (InterruptedException e) {
-			LOGGER.error("sendMessageAfterTransaction error." + e.getMessage(), e);
+	public static MQMessagesHolder getMQMessagesHolderToDubbo(MQProducerFor2PC producer){
+		
+		MQMessagesHolder mqmHolder = (MQMessagesHolder) TransactionSynchronizationManager.getResource(producer);
+		if(mqmHolder != null){
+			return mqmHolder;
 		}
+		
+		mqmHolder = new MQMessagesHolder();
+		TransactionSynchronizationManager.registerSynchronization(new DubboMQMessagesSynchronization(producer));
+		TransactionSynchronizationManager.bindResource(producer, mqmHolder);
+		return mqmHolder;
 	}
 	
-	private static class MQMessagesSynchronization extends TransactionSynchronizationAdapter {
+	public static void send(MQProducerFor2PC producer, MQMessagesHolder mqmHolder){
+		if(!mqmHolder.isEmpty()){
+			try {
+				List<Message> messages = mqmHolder.getMessages();
+				SendResult sendResult = null;
+				if(messages.size() == 1){
+					sendResult = producer.send(messages.get(0));
+				} else{
+					sendResult = producer.send(messages);
+				}
+				if(sendResult.getSendStatus() != SendStatus.SEND_OK){
+					LOGGER.error("sendMessageAfterTransaction fail " + sendResult.toString());
+				}
+			} catch (MQClientException e) {
+				LOGGER.error("sendMessageAfterTransaction error." + e.getMessage(), e);
+			} catch (RemotingException e) {
+				LOGGER.error("sendMessageAfterTransaction error." + e.getMessage(), e);
+			} catch (MQBrokerException e) {
+				LOGGER.error("sendMessageAfterTransaction error." + e.getMessage(), e);
+			} catch (InterruptedException e) {
+				LOGGER.error("sendMessageAfterTransaction error." + e.getMessage(), e);
+			}
+		}
+		mqmHolder.reset();
+	}
+	
+	private static class LocalMQMessagesSynchronization extends TransactionSynchronizationAdapter {
 		
 		private MQProducerFor2PC producer;
 		
@@ -62,7 +78,7 @@ public abstract class MQProducerUtils {
 		
 		private boolean holderActive = true;
 
-		public MQMessagesSynchronization(MQProducerFor2PC producer,MQMessagesHolder mqmHolder) {
+		public LocalMQMessagesSynchronization(MQProducerFor2PC producer,MQMessagesHolder mqmHolder) {
 			this.producer = producer;
 			this.mqmHolder = mqmHolder;
 		}
@@ -94,12 +110,7 @@ public abstract class MQProducerUtils {
 		
 		@Override
 		public void afterCommit() {
-			if (this.holderActive) {
-				if(!this.mqmHolder.isEmpty()){
-					List<Message> messages = this.mqmHolder.getMessages();
-					send(producer, messages);
-				}
-			}
+			send(producer, this.mqmHolder);
 		}
 
 		@Override
@@ -111,6 +122,36 @@ public abstract class MQProducerUtils {
 			this.mqmHolder.reset();
 		}
 		
+	}
+	
+	private static class DubboMQMessagesSynchronization extends TransactionSynchronizationAdapter {
+		
+		private MQProducerFor2PC producer;
+		
+		private boolean holderActive = true;
+
+		public DubboMQMessagesSynchronization(MQProducerFor2PC producer) {
+			this.producer = producer;
+		}
+
+		@Override
+		public int getOrder() {
+			return DataSourceUtils.CONNECTION_SYNCHRONIZATION_ORDER;
+		}
+
+		@Override
+		public void beforeCompletion() {
+			TransactionSynchronizationManager.unbindResource(this.producer);
+			this.holderActive = false;
+		}
+
+		@Override
+		public void afterCompletion(int status) {
+			if (this.holderActive) {
+				TransactionSynchronizationManager.unbindResourceIfPossible(this.producer);
+				this.holderActive = false;
+			}
+		}
 		
 	}
 }

@@ -1,5 +1,7 @@
 package com.sxb.lin.atomikos.dubbo.service;
 
+import java.lang.reflect.Field;
+
 import javax.transaction.RollbackException;
 import javax.transaction.Status;
 import javax.transaction.SystemException;
@@ -7,6 +9,7 @@ import javax.transaction.Transaction;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
 
+import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 import com.atomikos.datasource.TransactionalResource;
@@ -17,6 +20,9 @@ import com.atomikos.icatch.config.Configuration;
 import com.atomikos.icatch.jta.TransactionManagerImp;
 import com.atomikos.logging.Logger;
 import com.atomikos.logging.LoggerFactory;
+import com.atomikos.recovery.RecoveryLog;
+import com.atomikos.recovery.Repository;
+import com.atomikos.recovery.imp.RecoveryLogImp;
 import com.sxb.lin.atomikos.dubbo.DubboXAResourceImpl;
 import com.sxb.lin.atomikos.dubbo.DubboXATransactionalResource;
 import com.sxb.lin.atomikos.dubbo.pool.XAResourcePool;
@@ -30,6 +36,8 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 	private DubboXATransactionalResource dubboXATransactionalResource;
 	
 	private String localAddress;
+	
+	private Repository repository;
 		
 	DubboTransactionManagerServiceImpl(XAResourcePool xaResourcePool,
 			DubboXATransactionalResource dubboXATransactionalResource){
@@ -83,7 +91,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		}
 
 		long startTime = System.currentTimeMillis();
-		long timeout = compositeTransaction.getTimeout() + 3000;
+		long timeout = compositeTransaction.getTimeout() + DubboTransactionManagerService.ADD_TIME;
 		TransactionalResource res = dubboXATransactionalResource.findOrCreateTransactionalResource(uniqueResourceName,startTime + timeout);
 		XAResourceTransaction restx = (XAResourceTransaction) res.getResourceTransaction(compositeTransaction);
 		restx.setXAResource(xaResource);
@@ -142,6 +150,11 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		}
 	}
 
+	public Boolean wasCommitted(String remoteAddress, String tid) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 	public String getLocalAddress() {
 		return localAddress;
 	}
@@ -149,5 +162,25 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 	public void setLocalAddress(String localAddress) {
 		this.localAddress = localAddress;
 	}
-
+	
+	private Repository getRepository() {
+		if(repository != null){
+			return repository;
+		}
+		RecoveryLog recoveryLog = Configuration.getRecoveryLog();
+		if(recoveryLog == null){
+			return null;
+		}
+		Field findField = ReflectionUtils.findField(RecoveryLogImp.class, "repository");
+		findField.setAccessible(true);
+		try {
+			this.repository = (Repository) findField.get(recoveryLog);
+		} catch (IllegalArgumentException e) {
+			LOGGER.logError(e.getMessage(), e);
+		} catch (IllegalAccessException e) {
+			LOGGER.logError(e.getMessage(), e);
+		}
+		
+		return repository;
+	}
 }

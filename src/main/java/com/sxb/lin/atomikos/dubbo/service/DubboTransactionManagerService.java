@@ -6,6 +6,8 @@ import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
 
 public interface DubboTransactionManagerService {
+	
+	final static int ADD_TIME = 3000;
 
 	StartXid enlistResource(String remoteAddress,String uniqueResourceName,String tid,
 			String localAddress) throws SystemException, RollbackException;
@@ -19,4 +21,6 @@ public interface DubboTransactionManagerService {
 	Xid[] recover(String remoteAddress, String uniqueResourceName, int flag) throws XAException;
 	
 	long ping(String remoteAddress);
+	
+	Boolean wasCommitted(String remoteAddress, String tid);
 }

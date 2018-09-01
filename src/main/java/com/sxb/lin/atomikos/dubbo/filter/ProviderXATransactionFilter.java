@@ -20,11 +20,13 @@ public class ProviderXATransactionFilter implements Filter {
 			RpcContext context = RpcContext.getContext();
 			String tmAddress = context.getAttachment(ConsumerXATransactionFilter.XA_TM_ADDRESS_KEY);
 			String tid = context.getAttachment(ConsumerXATransactionFilter.XA_TID_KEY);
+			String timeOut = context.getAttachment(ConsumerXATransactionFilter.XA_TIME_OUT);
 			ParticipantXATransactionLocal local = null;
-			if(StringUtils.hasLength(tmAddress) && StringUtils.hasLength(tid)){
+			if(StringUtils.hasLength(tmAddress) && StringUtils.hasLength(tid) && StringUtils.hasLength(timeOut)){
 				local = new ParticipantXATransactionLocal();
 				local.setTmAddress(tmAddress);
 				local.setTid(tid);
+				local.setTimeOut(timeOut);
 				local.bindToThread();
 			}
 			

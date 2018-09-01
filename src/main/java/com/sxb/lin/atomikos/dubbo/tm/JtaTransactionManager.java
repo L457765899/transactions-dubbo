@@ -12,6 +12,7 @@ import com.atomikos.icatch.CompositeTransactionManager;
 import com.atomikos.icatch.config.Configuration;
 import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
+import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerService;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
 
 
@@ -60,10 +61,12 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 		CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction();
 		
 		String tid = compositeTransaction.getTid();
+		long time = compositeTransaction.getTimeout() + System.currentTimeMillis() + DubboTransactionManagerService.ADD_TIME;
 		
 		InitiatorXATransactionLocal local = new InitiatorXATransactionLocal();
 		local.setTid(tid);
 		local.setTmAddress(instance.getLocalAddress());
+		local.setTimeOut(time + "");
 		local.bindToThread();
 	}
 	

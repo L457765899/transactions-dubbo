@@ -15,6 +15,7 @@ import com.atomikos.icatch.CompositeTransaction;
 import com.atomikos.icatch.CompositeTransactionManager;
 import com.atomikos.icatch.config.Configuration;
 import com.sxb.lin.atomikos.dubbo.DubboXATransactionalResource;
+import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerService;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
 
 public class InitiatorXAConnectionHolder extends ConnectionHolder{
@@ -45,7 +46,7 @@ public class InitiatorXAConnectionHolder extends ConnectionHolder{
 		CompositeTransactionManager compositeTransactionManager = Configuration.getCompositeTransactionManager();
 		CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction();
 		long startTime = System.currentTimeMillis();
-		long timeout = compositeTransaction.getTimeout() + 3000;
+		long timeout = compositeTransaction.getTimeout() + DubboTransactionManagerService.ADD_TIME;
 		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
 		DubboXATransactionalResource dubboXATransactionalResource = instance.getDubboXATransactionalResource();
 		TransactionalResource res = 

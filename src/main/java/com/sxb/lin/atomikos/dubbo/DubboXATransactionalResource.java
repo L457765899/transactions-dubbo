@@ -24,6 +24,7 @@ import com.atomikos.recovery.RecoveryLog;
 import com.atomikos.recovery.TxState;
 import com.atomikos.recovery.imp.RecoveryLogImp;
 import com.atomikos.recovery.xa.XaResourceRecoveryManager;
+import com.sxb.lin.atomikos.dubbo.rocketmq.MQProducerFor2PC;
 
 public class DubboXATransactionalResource extends XATransactionalResource{
 	
@@ -97,14 +98,14 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 		Set<String> ret = new HashSet<String>();
 		Collection<ParticipantLogEntry> entries = this.getUnfinishedParticipants();
 		for (ParticipantLogEntry entry : entries) {
+			LOGGER.logWarning("xa command interrupted " + entry.toString());
 			if (expired(entry) && !http(entry)) {
-				LOGGER.logWarning("xa command interrupted " + entry.toString());
-				if(!entry.resourceName.equals(entry.coordinatorId + entry.uri)){
+				if((!entry.resourceName.equals(entry.coordinatorId + entry.uri)) 
+						&& (!entry.resourceName.startsWith(MQProducerFor2PC.MQ_UNIQUE_TOPIC_PREFIX))){
 					ret.add(entry.resourceName);
 				}
 			}
 		}
-		
 		return ret;
 	}
 	
@@ -142,6 +143,18 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 	}
 	
 	public TransactionalResource findOrCreateTransactionalResource(String uniqueResourceName,long timeout) {
+		if(uniqueResourceName.startsWith(MQProducerFor2PC.MQ_UNIQUE_TOPIC_PREFIX)){
+			TransactionalResource transactionalResource = new TemporaryXATransactionalResource(uniqueResourceName){
+				@Override
+				public void recover() {
+					//no recover
+				}
+			};
+			TransactionServiceProvider transactionService = (TransactionServiceProvider) Configuration.getTransactionService();
+			transactionalResource.setRecoveryService(transactionService.getRecoveryService());
+			return transactionalResource;
+		}
+		
 		RecoverableResource resource = Configuration.getResource(uniqueResourceName);
 		TransactionalResource ret = null;
 		if(resource == null){

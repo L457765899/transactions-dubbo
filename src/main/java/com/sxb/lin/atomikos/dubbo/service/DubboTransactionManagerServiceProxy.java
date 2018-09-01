@@ -212,4 +212,12 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		}
 	}
 
+	public Boolean wasCommitted(String remoteAddress, String tid) {
+		if(this.isLocal(remoteAddress)){
+			return this.getLocalDubboTransactionManagerService().wasCommitted(remoteAddress, tid);
+		}else{
+			return this.getRemoteDubboTransactionManagerService().wasCommitted(remoteAddress, tid);
+		}
+	}
+
 }

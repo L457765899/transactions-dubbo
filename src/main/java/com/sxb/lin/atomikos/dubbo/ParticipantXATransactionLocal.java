@@ -24,6 +24,8 @@ public class ParticipantXATransactionLocal {
 	private String tid;
     
     private String tmAddress;
+    
+    private String timeOut;
 
 	public String getTid() {
 		return tid;
@@ -39,6 +41,14 @@ public class ParticipantXATransactionLocal {
 
 	public void setTmAddress(String tmAddress) {
 		this.tmAddress = tmAddress;
+	}
+	
+	public String getTimeOut() {
+		return timeOut;
+	}
+
+	public void setTimeOut(String timeOut) {
+		this.timeOut = timeOut;
 	}
 	
 	public Boolean getIsActive() {

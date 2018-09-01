@@ -15,9 +15,21 @@ import org.apache.rocketmq.common.message.MessageConst;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
+import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
+
 public class MQXAResourceImpl implements XAResource{
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(MQXAResourceImpl.class);
+	
+	public final static String XA_TM_ADDRESS = "XA_TM_ADDRESS";
+	
+	public final static String XA_FORMAT_ID = "XA_FORMAT_ID";
+	
+	public final static String XA_GLOBAL_TRANSACTION_ID = "XA_GLOBAL_TRANSACTION_ID";
+	
+	public final static String XA_BRANCH_QUALIFIER = "XA_BRANCH_QUALIFIER";
+	
 	
 	private MQProducerFor2PC producer;
 	
@@ -46,6 +58,8 @@ public class MQXAResourceImpl implements XAResource{
 		
 		MessageAccessor.putProperty(msg, MessageConst.PROPERTY_TRANSACTION_PREPARED, "true");
         MessageAccessor.putProperty(msg, MessageConst.PROPERTY_PRODUCER_GROUP, producer.getProducerGroup());
+        MessageAccessor.putProperty(msg, MessageConst.PROPERTY_TRANSACTION_CHECK_TIMES, "120");
+        
         try {
         	sendResult = producer.getDefaultMQProducerImpl().send(msg);
         	isPrepare = true;
@@ -113,10 +127,17 @@ public class MQXAResourceImpl implements XAResource{
 			LOGGER.error(e.getMessage(), e);
 			throw new XAException(XAException.XAER_INVAL);
 		}
-		msg.putUserProperty("XA_TIME_OUT", timeOut + "");
-		msg.putUserProperty("XA_FORMAT_ID", xid.getFormatId() + "");
-		msg.putUserProperty("XA_GLOBAL_TRANSACTION_ID", new String(xid.getGlobalTransactionId()));
-		msg.putUserProperty("XA_BRANCH_QUALIFIER", new String(xid.getBranchQualifier()));
+		
+		InitiatorXATransactionLocal current = InitiatorXATransactionLocal.current();
+		if(current != null){
+			msg.putUserProperty(XA_TM_ADDRESS, current.getTmAddress());
+		}else{
+			ParticipantXATransactionLocal pcurrent = ParticipantXATransactionLocal.current();
+			msg.putUserProperty(XA_TM_ADDRESS, pcurrent.getTmAddress());
+		}
+		msg.putUserProperty(XA_FORMAT_ID, xid.getFormatId() + "");
+		msg.putUserProperty(XA_GLOBAL_TRANSACTION_ID, new String(xid.getGlobalTransactionId()));
+		msg.putUserProperty(XA_BRANCH_QUALIFIER, new String(xid.getBranchQualifier()));
 	}
 
 	public void end(Xid xid, int flags) throws XAException {

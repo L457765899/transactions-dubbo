@@ -31,6 +31,7 @@ import com.atomikos.icatch.config.Configuration;
 import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.annotation.XA;
+import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerService;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
 import com.sxb.lin.atomikos.dubbo.spring.XAInvocationLocal;
 import com.sxb.lin.atomikos.dubbo.spring.jdbc.InitiatorXADataSourceUtils;
@@ -283,10 +284,12 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction();
 		
 		String tid = compositeTransaction.getTid();
+		long time = compositeTransaction.getTimeout() + System.currentTimeMillis() + DubboTransactionManagerService.ADD_TIME;
 		
 		InitiatorXATransactionLocal local = new InitiatorXATransactionLocal();
 		local.setTid(tid);
 		local.setTmAddress(instance.getLocalAddress());
+		local.setTimeOut(time + "");
 		local.bindToThread();
 	}
 	

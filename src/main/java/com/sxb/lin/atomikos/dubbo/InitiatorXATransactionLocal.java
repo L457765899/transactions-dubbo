@@ -1,9 +1,5 @@
 package com.sxb.lin.atomikos.dubbo;
 
-
-
-
-
 public class InitiatorXATransactionLocal {
 
 	private final static ThreadLocal<InitiatorXATransactionLocal> CURRENT_LOCAL = new ThreadLocal<InitiatorXATransactionLocal>();
@@ -17,6 +13,8 @@ public class InitiatorXATransactionLocal {
     private String tid;
     
     private String tmAddress;
+    
+    private String timeOut;
 
 	public String getTmAddress() {
 		return tmAddress;
@@ -32,6 +30,14 @@ public class InitiatorXATransactionLocal {
 
 	public void setTid(String tid) {
 		this.tid = tid;
+	}
+	
+	public String getTimeOut() {
+		return timeOut;
+	}
+
+	public void setTimeOut(String timeOut) {
+		this.timeOut = timeOut;
 	}
 	
 	public void bindToThread(){
