@@ -1,6 +1,9 @@
 package com.sxb.lin.atomikos.dubbo.rocketmq;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.rocketmq.client.exception.MQBrokerException;
 import org.apache.rocketmq.client.exception.MQClientException;
@@ -76,8 +79,20 @@ public abstract class MQProducerUtils {
 						sendResult = producer.send(msg);
 						messagesSendLog.sendSuccess(msg, sendResult);
 					} else{
-						sendResult = producer.send(messages);
-						messagesSendLog.sendSuccess(messages, sendResult);
+						Map<String,List<Message>> topicMap = new HashMap<String, List<Message>>();
+						for(Message msg : messages){
+							String topic = msg.getTopic();
+							List<Message> list = topicMap.get(topic);
+							if(list == null){
+								list = new ArrayList<Message>();
+								topicMap.put(topic, list);
+							}
+							list.add(msg);
+						}
+						for(List<Message> list : topicMap.values()){
+							sendResult = producer.send(list);
+							messagesSendLog.sendSuccess(list, sendResult);
+						}
 					}
 				} catch (MQClientException e) {
 					messagesSendLog.sendOnException(messages, e);
