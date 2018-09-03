@@ -22,5 +22,5 @@ public interface DubboTransactionManagerService {
 	
 	long ping(String remoteAddress);
 	
-	Boolean wasCommitted(String remoteAddress, String tid);
+	Boolean wasCommitted(String remoteAddress, String tid, String uri);
 }

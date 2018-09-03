@@ -28,6 +28,8 @@ public class MQProducerFor2PC extends TransactionMQProducer{
 	
 	public final static String MQ_UNIQUE_TOPIC_PREFIX = "Rocket_MQ_Unique_";
 	
+	private MQMessagesSendLog messagesSendLog = new DefaultMQMessagesSendLog();
+	
 	public MQProducerFor2PC() {
 		super();
 	}
@@ -39,10 +41,10 @@ public class MQProducerFor2PC extends TransactionMQProducer{
 	public MQProducerFor2PC(String producerGroup) {
 		super(producerGroup);
 	}
-
-	public  void sendMessageAfterTransaction(Message msg){
+	
+	protected void doSendMessageAfterTransaction(Message msg, boolean async){
 		if(ParticipantXATransactionLocal.isUseParticipantXATransaction()){
-			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToDubbo(this);
+			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToDubbo(this, async);
 			mqMessagesHolder.addMessage(msg);
 			
 			XAResource xaResource = new MQNOResourceImpl(this, mqMessagesHolder);
@@ -60,9 +62,17 @@ public class MQProducerFor2PC extends TransactionMQProducer{
 				throw new RuntimeException("transaction not start.");
 			}
 			
-			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToLocal(this);
+			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToLocal(this, async);
 			mqMessagesHolder.addMessage(msg);
 		}
+	}
+
+	public void sendMessageAfterTransaction(Message msg){
+		this.doSendMessageAfterTransaction(msg, false);
+	}
+	
+	public void sendAsyncMessageAfterTransaction(Message msg){
+		this.doSendMessageAfterTransaction(msg, true);
 	}
 
 	public void send2PCMessageInTransaction(Message msg){
@@ -108,5 +118,13 @@ public class MQProducerFor2PC extends TransactionMQProducer{
 				throw new RuntimeException(e);
 			}
 		}
+	}
+
+	public MQMessagesSendLog getMessagesSendLog() {
+		return messagesSendLog;
+	}
+
+	public void setMessagesSendLog(MQMessagesSendLog messagesSendLog) {
+		this.messagesSendLog = messagesSendLog;
 	}
 }

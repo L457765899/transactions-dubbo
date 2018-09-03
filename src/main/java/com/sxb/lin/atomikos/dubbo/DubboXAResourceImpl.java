@@ -30,11 +30,17 @@ public class DubboXAResourceImpl implements XAResource{
 	}
 
 	public void commit(Xid xid, boolean onePhase) throws XAException {
-		DubboTransactionManagerServiceProxy.getInstance().commit(remoteAddress, uniqueResourceName, xid, onePhase);
+		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
+		if(!instance.wasTerminated(uniqueResourceName, xid)){
+			instance.commit(remoteAddress, uniqueResourceName, xid, onePhase);
+		}
 	}
 	
 	public void rollback(Xid xid) throws XAException {
-		DubboTransactionManagerServiceProxy.getInstance().rollback(remoteAddress, uniqueResourceName, xid);
+		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
+		if(!instance.wasTerminated(uniqueResourceName, xid)){
+			instance.rollback(remoteAddress, uniqueResourceName, xid);
+		}
 	}
 	
 	public void start(Xid xid, int flags) throws XAException {

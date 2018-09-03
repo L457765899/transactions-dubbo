@@ -9,6 +9,8 @@ import org.springframework.transaction.support.ResourceHolderSupport;
 public class MQMessagesHolder extends ResourceHolderSupport{
 
 	private List<Message> messages;
+	
+	private boolean async;
 
 	public MQMessagesHolder() {
 		this.messages = new ArrayList<Message>();
@@ -34,6 +36,14 @@ public class MQMessagesHolder extends ResourceHolderSupport{
 
 	public List<Message> getMessages() {
 		return messages;
+	}
+
+	public boolean isAsync() {
+		return async;
+	}
+
+	public void setAsync(boolean async) {
+		this.async = async;
 	}
 	
 }

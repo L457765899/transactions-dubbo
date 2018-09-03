@@ -9,6 +9,8 @@ import javax.transaction.Transaction;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -18,10 +20,12 @@ import com.atomikos.icatch.CompositeTransaction;
 import com.atomikos.icatch.CompositeTransactionManager;
 import com.atomikos.icatch.config.Configuration;
 import com.atomikos.icatch.jta.TransactionManagerImp;
-import com.atomikos.logging.Logger;
-import com.atomikos.logging.LoggerFactory;
+import com.atomikos.recovery.CoordinatorLogEntry;
+import com.atomikos.recovery.LogReadException;
+import com.atomikos.recovery.ParticipantLogEntry;
 import com.atomikos.recovery.RecoveryLog;
 import com.atomikos.recovery.Repository;
+import com.atomikos.recovery.TxState;
 import com.atomikos.recovery.imp.RecoveryLogImp;
 import com.sxb.lin.atomikos.dubbo.DubboXAResourceImpl;
 import com.sxb.lin.atomikos.dubbo.DubboXATransactionalResource;
@@ -29,7 +33,7 @@ import com.sxb.lin.atomikos.dubbo.pool.XAResourcePool;
 
 public class DubboTransactionManagerServiceImpl implements DubboTransactionManagerService{
 	
-	private static final Logger LOGGER = LoggerFactory.createLogger(DubboTransactionManagerServiceImpl.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(DubboTransactionManagerServiceImpl.class);
 	
 	private XAResourcePool xaResourcePool;
 	
@@ -79,14 +83,14 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		case Status.STATUS_ROLLEDBACK:
 		case Status.STATUS_ROLLING_BACK:
 			String msg = "Transaction rollback - enlisting more resources is useless.";
-			LOGGER.logWarning(msg);
+			LOGGER.warn(msg);
 			throw new javax.transaction.RollbackException(msg);
 		case Status.STATUS_COMMITTED:
 		case Status.STATUS_PREPARED:
 		case Status.STATUS_UNKNOWN:
 			msg = "Enlisting more resources is no longer permitted: transaction is in state "
 					+ compositeTransaction.getState();
-			LOGGER.logWarning(msg);
+			LOGGER.warn(msg);
 			throw new IllegalStateException(msg);
 		}
 
@@ -143,15 +147,33 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 	public long ping(String remoteAddress) {
 		if(StringUtils.hasLength(remoteAddress) && remoteAddress.equals(localAddress)){
 			long currentTimeMillis = System.currentTimeMillis();
-			LOGGER.logWarning("ping("+remoteAddress+") return "+currentTimeMillis);
+			LOGGER.warn("ping("+remoteAddress+") return "+currentTimeMillis);
 			return currentTimeMillis;
 		} else {
 			return -1;
 		}
 	}
 
-	public Boolean wasCommitted(String remoteAddress, String tid) {
-		// TODO Auto-generated method stub
+	public Boolean wasCommitted(String remoteAddress, String tid, String uri) {
+		try {
+			if(this.getRepository() != null){
+				CoordinatorLogEntry coordinatorLogEntry = this.getRepository().get(tid);
+				if(coordinatorLogEntry != null){
+					if(coordinatorLogEntry.wasCommitted){
+						for(ParticipantLogEntry entry : coordinatorLogEntry.participants){
+							if(entry.coordinatorId.equals(tid) && entry.uri.equals(uri) && entry.state == TxState.COMMITTING){
+								ParticipantLogEntry terminatedEntry = new ParticipantLogEntry(
+										entry.coordinatorId,entry.uri,entry.expires,entry.resourceName,TxState.TERMINATED);
+								this.getRecoveryLog().terminated(terminatedEntry);
+							}
+						}
+					}
+					return coordinatorLogEntry.wasCommitted;
+				}
+			}
+		} catch (LogReadException e) {
+			LOGGER.error(e.getMessage(), e);
+		}
 		return null;
 	}
 
@@ -163,11 +185,11 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		this.localAddress = localAddress;
 	}
 	
-	private Repository getRepository() {
+	public Repository getRepository() {
 		if(repository != null){
 			return repository;
 		}
-		RecoveryLog recoveryLog = Configuration.getRecoveryLog();
+		RecoveryLog recoveryLog = this.getRecoveryLog();
 		if(recoveryLog == null){
 			return null;
 		}
@@ -176,11 +198,19 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		try {
 			this.repository = (Repository) findField.get(recoveryLog);
 		} catch (IllegalArgumentException e) {
-			LOGGER.logError(e.getMessage(), e);
+			LOGGER.error(e.getMessage(), e);
 		} catch (IllegalAccessException e) {
-			LOGGER.logError(e.getMessage(), e);
+			LOGGER.error(e.getMessage(), e);
 		}
 		
 		return repository;
+	}
+	
+	public RecoveryLog getRecoveryLog(){
+		RecoveryLog recoveryLog = Configuration.getRecoveryLog();
+		if(recoveryLog == null){
+			return null;
+		}
+		return recoveryLog;
 	}
 }

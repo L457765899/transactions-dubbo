@@ -9,6 +9,8 @@ import javax.transaction.SystemException;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
 import com.alibaba.dubbo.config.ApplicationConfig;
@@ -19,16 +21,20 @@ import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.config.RegistryConfig;
 import com.alibaba.dubbo.config.ServiceConfig;
 import com.atomikos.icatch.config.Configuration;
-import com.atomikos.logging.Logger;
-import com.atomikos.logging.LoggerFactory;
+import com.atomikos.recovery.CoordinatorLogEntry;
+import com.atomikos.recovery.LogReadException;
+import com.atomikos.recovery.ParticipantLogEntry;
+import com.atomikos.recovery.Repository;
+import com.atomikos.recovery.TxState;
 import com.sxb.lin.atomikos.dubbo.AtomikosDubboException;
 import com.sxb.lin.atomikos.dubbo.DubboXATransactionalResource;
 import com.sxb.lin.atomikos.dubbo.pool.XAResourcePool;
 import com.sxb.lin.atomikos.dubbo.pool.recover.UniqueResource;
+import com.sxb.lin.atomikos.dubbo.rocketmq.MQProducerFor2PC;
 
 public class DubboTransactionManagerServiceProxy implements DubboTransactionManagerService{
 	
-	private static final Logger LOGGER = LoggerFactory.createLogger(DubboTransactionManagerServiceProxy.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(DubboTransactionManagerServiceProxy.class);
 	
 	private final static DubboTransactionManagerServiceProxy INSTANCE = new DubboTransactionManagerServiceProxy();
 	
@@ -207,17 +213,43 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 				return this.getRemoteDubboTransactionManagerService().ping(remoteAddress);
 			}
 		} catch (Exception e) {
-			LOGGER.logError(e.getMessage(), e);
+			LOGGER.error(e.getMessage(), e);
 			return -1;
 		}
 	}
 
-	public Boolean wasCommitted(String remoteAddress, String tid) {
+	public Boolean wasCommitted(String remoteAddress, String tid, String uri) {
 		if(this.isLocal(remoteAddress)){
-			return this.getLocalDubboTransactionManagerService().wasCommitted(remoteAddress, tid);
+			return this.getLocalDubboTransactionManagerService().wasCommitted(remoteAddress, tid, uri);
 		}else{
-			return this.getRemoteDubboTransactionManagerService().wasCommitted(remoteAddress, tid);
+			return this.getRemoteDubboTransactionManagerService().wasCommitted(remoteAddress, tid, uri);
 		}
 	}
 
+	public boolean wasTerminated(String uniqueResourceName, Xid xid){
+		if(!uniqueResourceName.startsWith(MQProducerFor2PC.MQ_UNIQUE_TOPIC_PREFIX)){
+			return false;
+		}
+		DubboTransactionManagerServiceImpl impl = (DubboTransactionManagerServiceImpl) this.localDubboTransactionManagerService;
+		Repository repository = impl.getRepository();
+		if(repository == null){
+			return false;
+		}
+		try {
+			String tid = new String(xid.getGlobalTransactionId());
+			String uri = new String(xid.getBranchQualifier());
+			CoordinatorLogEntry coordinatorLogEntry = repository.get(tid);
+			if(coordinatorLogEntry == null){
+				return false;
+			}
+			for(ParticipantLogEntry entry : coordinatorLogEntry.participants){
+				if(entry.coordinatorId.equals(tid) && entry.uri.equals(uri) && entry.state == TxState.TERMINATED){
+					return true;
+				}
+			}
+		} catch (LogReadException e) {
+			LOGGER.error(e.getMessage(), e);
+		}
+		return false;
+	}
 }

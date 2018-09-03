@@ -58,13 +58,14 @@ public class MQXAResourceImpl implements XAResource{
 		
 		MessageAccessor.putProperty(msg, MessageConst.PROPERTY_TRANSACTION_PREPARED, "true");
         MessageAccessor.putProperty(msg, MessageConst.PROPERTY_PRODUCER_GROUP, producer.getProducerGroup());
-        MessageAccessor.putProperty(msg, MessageConst.PROPERTY_TRANSACTION_CHECK_TIMES, "120");
         
+        MQMessagesSendLog messagesSendLog = producer.getMessagesSendLog();
         try {
         	sendResult = producer.getDefaultMQProducerImpl().send(msg);
         	isPrepare = true;
+        	messagesSendLog.firstSendSuccess(msg, sendResult);
         } catch (Exception e) {
-        	LOGGER.error(e.getMessage(), e);
+        	messagesSendLog.firstSendOnException(msg, e);
         	throw new XAException(XAException.XAER_RMERR);
         }
         
@@ -91,14 +92,16 @@ public class MQXAResourceImpl implements XAResource{
 		}
 		DefaultMQProducerImpl defaultMQProducerImpl = producer.getDefaultMQProducerImpl();
     	LocalTransactionState localTransactionState = LocalTransactionState.COMMIT_MESSAGE;
+    	MQMessagesSendLog messagesSendLog = producer.getMessagesSendLog();
         try {
         	defaultMQProducerImpl.endTransaction(sendResult, LocalTransactionState.COMMIT_MESSAGE, null);
         	isCommit = true;
+        	messagesSendLog.secondSendSuccess(msg, sendResult, localTransactionState);
         } catch (Exception e) {
         	if(this.timeOut > System.currentTimeMillis()){
         		throw new XAException(XAException.XAER_RMERR);
         	}else{
-        		LOGGER.warn("local transaction execute " + localTransactionState + ", but end broker transaction failed", e);
+        		messagesSendLog.secondSendOnException(msg, sendResult, localTransactionState, e);
         	}
         }
 	}
@@ -109,13 +112,15 @@ public class MQXAResourceImpl implements XAResource{
 		}
 		DefaultMQProducerImpl defaultMQProducerImpl = producer.getDefaultMQProducerImpl();
         LocalTransactionState localTransactionState = LocalTransactionState.ROLLBACK_MESSAGE;
+        MQMessagesSendLog messagesSendLog = producer.getMessagesSendLog();
         try {
         	defaultMQProducerImpl.endTransaction(sendResult, localTransactionState, null);
+        	messagesSendLog.secondSendSuccess(msg, sendResult, localTransactionState);
         } catch (Exception e) {
         	if(this.timeOut > System.currentTimeMillis()){
         		throw new XAException(XAException.XAER_RMERR);
         	}else{
-        		LOGGER.warn("local transaction execute " + localTransactionState + ", but end broker transaction failed", e);
+        		messagesSendLog.secondSendOnException(msg, sendResult, localTransactionState, e);
         	}
         }
 	}

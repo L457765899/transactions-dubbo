@@ -20,13 +20,14 @@ public class TransactionListenerImpl implements TransactionListener {
 	public LocalTransactionState checkLocalTransaction(MessageExt msg) {
 		String tmAddress = msg.getProperty(MQXAResourceImpl.XA_TM_ADDRESS);
 		String tid = msg.getProperty(MQXAResourceImpl.XA_GLOBAL_TRANSACTION_ID);
-		if(tid == null || tmAddress == null){
+		String uri = msg.getProperty(MQXAResourceImpl.XA_BRANCH_QUALIFIER);
+		if(tid == null || tmAddress == null || uri == null){
 			LOGGER.error(msg.getTransactionId() + " check local transaction is rollback.");
 			return LocalTransactionState.ROLLBACK_MESSAGE;
 		}
 		
-		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();			
-		Boolean wasCommitted = instance.wasCommitted(tmAddress, tid);
+		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
+		Boolean wasCommitted = instance.wasCommitted(tmAddress, tid, uri);
 		if(wasCommitted != null){
 			if(wasCommitted.booleanValue()){
 				LOGGER.info(msg.getTransactionId() + " check local transaction is commit.");

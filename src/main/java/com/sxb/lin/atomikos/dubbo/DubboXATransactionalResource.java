@@ -8,14 +8,15 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.transaction.xa.XAResource;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.atomikos.datasource.RecoverableResource;
 import com.atomikos.datasource.ResourceException;
 import com.atomikos.datasource.TransactionalResource;
 import com.atomikos.datasource.xa.XATransactionalResource;
 import com.atomikos.icatch.config.Configuration;
 import com.atomikos.icatch.provider.TransactionServiceProvider;
-import com.atomikos.logging.Logger;
-import com.atomikos.logging.LoggerFactory;
 import com.atomikos.recovery.CoordinatorLogEntry;
 import com.atomikos.recovery.LogException;
 import com.atomikos.recovery.LogReadException;
@@ -28,7 +29,7 @@ import com.sxb.lin.atomikos.dubbo.rocketmq.MQProducerFor2PC;
 
 public class DubboXATransactionalResource extends XATransactionalResource{
 	
-	private static final Logger LOGGER = LoggerFactory.createLogger(DubboXATransactionalResource.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(DubboXATransactionalResource.class);
 
 	private Map<String,Long> uniqueResourceNameMap;
 	
@@ -49,7 +50,7 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 	}
 	
 	protected XAResource createDubboXAResource(String resourceName) {
-		LOGGER.logInfo ( this.getName() + ": created " + resourceName + " XAResource" );	
+		LOGGER.info( this.getName() + ": created " + resourceName + " XAResource" );
 		return new DubboXAResourceImpl(resourceName);
 	}
 
@@ -84,12 +85,12 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 					try {
 						xaResourceRecoveryManager.recover(this.createDubboXAResource(resourceName));
 					} catch (Exception e) {
-						LOGGER.logError(e.getMessage(), e);
+						LOGGER.error(e.getMessage(), e);
 					}
 				}
 			}
 		} catch (LogException couldNotRetrieveCommittingXids) {
-			LOGGER.logWarning("Transient error while recovering - will retry later...", couldNotRetrieveCommittingXids);
+			LOGGER.warn("Transient error while recovering - will retry later...", couldNotRetrieveCommittingXids);
 		}
 		
 	}
@@ -98,7 +99,7 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 		Set<String> ret = new HashSet<String>();
 		Collection<ParticipantLogEntry> entries = this.getUnfinishedParticipants();
 		for (ParticipantLogEntry entry : entries) {
-			LOGGER.logWarning("xa command interrupted " + entry.toString());
+			LOGGER.warn("xa command interrupted " + entry.toString());
 			if (expired(entry) && !http(entry)) {
 				if((!entry.resourceName.equals(entry.coordinatorId + entry.uri)) 
 						&& (!entry.resourceName.startsWith(MQProducerFor2PC.MQ_UNIQUE_TOPIC_PREFIX))){
