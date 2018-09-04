@@ -24,6 +24,7 @@ public class MQMessagesHolder extends ResourceHolderSupport{
 	public void reset() {
 		super.reset();
 		messages = null;
+		async = false;
 	}
 	
 	public boolean isEmpty(){

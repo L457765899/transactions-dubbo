@@ -12,6 +12,8 @@ public interface MQMessagesSendLog {
 	
 	void sendOnException(Message msg,Throwable throwable);
 	
+	void sendAsyncOnException(Message msg,Throwable throwable);
+	
 	void sendSuccess(Collection<Message> msgs,SendResult sendResult);
 	
 	void sendOnException(Collection<Message> msgs,Throwable throwable);

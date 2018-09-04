@@ -26,7 +26,9 @@ import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerService;
 
 public class MQProducerFor2PC extends TransactionMQProducer{
 	
-	public final static String MQ_UNIQUE_TOPIC_PREFIX = "Rocket_MQ_Unique_";
+	public final static String MQ_UNIQUE_TOPIC_PREFIX = "RCMQ_UN_";
+	
+	public final static String MQ_UNIQUE_TOPIC_NO_PREPARE_PREFIX = MQ_UNIQUE_TOPIC_PREFIX + "NO_PREP_";
 	
 	private MQMessagesSendLog messagesSendLog = new DefaultMQMessagesSendLog();
 	
@@ -49,7 +51,7 @@ public class MQProducerFor2PC extends TransactionMQProducer{
 			
 			XAResource xaResource = new MQNOResourceImpl(this, mqMessagesHolder);
 			XAResourceHolder xaResourceHolder = new MQXAResourceHolder(
-					MQ_UNIQUE_TOPIC_PREFIX + msg.getTopic(), UUID.randomUUID().toString(), xaResource);
+					MQ_UNIQUE_TOPIC_NO_PREPARE_PREFIX + msg.getTopic(), UUID.randomUUID().toString(), xaResource);
 			
 			try {
 				xaResourceHolder.start();

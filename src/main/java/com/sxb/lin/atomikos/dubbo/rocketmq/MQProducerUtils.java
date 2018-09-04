@@ -59,16 +59,19 @@ public abstract class MQProducerUtils {
 							}
 							
 							public void onException(Throwable e) {
-								messagesSendLog.sendOnException(msg, e);
+								messagesSendLog.sendAsyncOnException(msg, e);
 							}
 							
 						});
 					} catch (MQClientException e) {
 						messagesSendLog.sendOnException(msg, e);
+						throw new RuntimeException(e);
 					} catch (RemotingException e) {
 						messagesSendLog.sendOnException(msg, e);
+						throw new RuntimeException(e);
 					} catch (InterruptedException e) {
 						messagesSendLog.sendOnException(msg, e);
+						throw new RuntimeException(e);
 					}
 				}
 			}else{
@@ -96,12 +99,16 @@ public abstract class MQProducerUtils {
 					}
 				} catch (MQClientException e) {
 					messagesSendLog.sendOnException(messages, e);
+					throw new RuntimeException(e);
 				} catch (RemotingException e) {
 					messagesSendLog.sendOnException(messages, e);
+					throw new RuntimeException(e);
 				} catch (MQBrokerException e) {
 					messagesSendLog.sendOnException(messages, e);
+					throw new RuntimeException(e);
 				} catch (InterruptedException e) {
 					messagesSendLog.sendOnException(messages, e);
+					throw new RuntimeException(e);
 				}
 			}
 		}
@@ -147,7 +154,7 @@ public abstract class MQProducerUtils {
 		}
 		
 		@Override
-		public void afterCommit() {
+		public void beforeCommit(boolean readOnly) {
 			send(this.producer, this.mqmHolder);
 		}
 

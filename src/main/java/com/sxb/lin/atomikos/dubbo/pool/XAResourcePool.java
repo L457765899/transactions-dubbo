@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import com.sxb.lin.atomikos.dubbo.pool.recover.RecoverXAResource;
 import com.sxb.lin.atomikos.dubbo.pool.recover.UniqueResource;
+import com.sxb.lin.atomikos.dubbo.rocketmq.MQProducerFor2PC;
 import com.sxb.lin.atomikos.dubbo.service.StartXid;
 
 public class XAResourcePool implements Runnable{
@@ -119,6 +120,9 @@ public class XAResourcePool implements Runnable{
 					XAResource xaResource = recoverXAResource.getXAResource();
 					xaResource.commit(xid, onePhase);
 				}else{
+					if(uniqueResourceName.startsWith(MQProducerFor2PC.MQ_UNIQUE_TOPIC_NO_PREPARE_PREFIX)){
+						return;
+					}
 					throw new XAException("XAResourceHolder or XAConnection is not exist.");
 				}
 			} catch (SQLException e) {
@@ -143,6 +147,9 @@ public class XAResourcePool implements Runnable{
 					XAResource xaResource = recoverXAResource.getXAResource();
 					xaResource.rollback(xid);
 				}else{
+					if(uniqueResourceName.startsWith(MQProducerFor2PC.MQ_UNIQUE_TOPIC_NO_PREPARE_PREFIX)){
+						return;
+					}
 					throw new XAException("XAResourceHolder or XAConnection is not exist.");
 				}
 			} catch (SQLException e) {
