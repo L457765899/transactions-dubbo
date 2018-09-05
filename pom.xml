@@ -4,7 +4,7 @@
 
 	<groupId>com.sxb.lin.transactions.dubbo</groupId>
 	<artifactId>transactions-dubbo</artifactId>
-	<version>1.0.0-RELEASE</version>
+	<version>1.0.1-RELEASE</version>
 	<packaging>jar</packaging>
 
 	<name>transactions-dubbo</name>
