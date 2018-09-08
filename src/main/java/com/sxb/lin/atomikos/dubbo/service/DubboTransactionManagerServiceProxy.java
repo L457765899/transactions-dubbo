@@ -246,6 +246,13 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 				if(entry.coordinatorId.equals(tid) && entry.uri.equals(uri) && entry.state == TxState.TERMINATED){
 					return true;
 				}
+				if(entry.coordinatorId.equals(tid) && entry.resourceName.startsWith(MQProducerFor2PC.MQ_UNIQUE_TOPIC_PREFIX)
+						&& entry.state == TxState.TERMINATED){
+					String commiting = uri + "," + uniqueResourceName;
+					String terminated = entry.uri + "," + entry.resourceName;
+					LOGGER.warn(commiting + "is not find terminated,but " + terminated + " is terminated.so terminated " + commiting);
+					return true;
+				}
 			}
 		} catch (LogReadException e) {
 			LOGGER.error(e.getMessage(), e);
