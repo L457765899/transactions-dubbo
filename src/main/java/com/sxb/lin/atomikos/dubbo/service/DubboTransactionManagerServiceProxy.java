@@ -2,7 +2,6 @@ package com.sxb.lin.atomikos.dubbo.service;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import javax.transaction.RollbackException;
 import javax.transaction.SystemException;
@@ -13,12 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
-import com.alibaba.dubbo.config.ApplicationConfig;
-import com.alibaba.dubbo.config.ConsumerConfig;
 import com.alibaba.dubbo.config.ProtocolConfig;
-import com.alibaba.dubbo.config.ProviderConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
-import com.alibaba.dubbo.config.RegistryConfig;
 import com.alibaba.dubbo.config.ServiceConfig;
 import com.atomikos.icatch.config.Configuration;
 import com.atomikos.recovery.CoordinatorLogEntry;
@@ -60,21 +55,19 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		
 	}
 	
-	public void init(ApplicationConfig applicationConfig,RegistryConfig registryConfig,
-			ProtocolConfig protocolConfig,ProviderConfig providerConfig,ConsumerConfig consumerConfig,
-			Map<String,UniqueResource> uniqueResourceMapping,Set<String> excludeResourceNames){
+	public void init(DubboTransactionManagerServiceConfig config){
 		if(inited){
 			return;
 		}
-		dubboXATransactionalResource = new DubboXATransactionalResource(excludeResourceNames);
-		this.export(applicationConfig, registryConfig, protocolConfig, providerConfig,uniqueResourceMapping);
-		this.reference(applicationConfig, registryConfig, consumerConfig);
+		dubboXATransactionalResource = new DubboXATransactionalResource(config.getExcludeResourceNames());
+		this.export(config);
+		this.reference(config);
 		inited = true;
 		Configuration.addResource(dubboXATransactionalResource);
 	}
 	
-	private void export(ApplicationConfig applicationConfig,RegistryConfig registryConfig,
-			ProtocolConfig protocolConfig,ProviderConfig providerConfig,Map<String,UniqueResource> uniqueResourceMapping){
+	private void export(DubboTransactionManagerServiceConfig config){
+		Map<String, UniqueResource> uniqueResourceMapping = config.getUniqueResourceMapping();
 		this.uniqueResourceNames = StringUtils.collectionToCommaDelimitedString(uniqueResourceMapping.keySet());
 		Map<String, String> parameters = new HashMap<String, String>();
 		parameters.put("uniqueResourceNames", uniqueResourceNames);
@@ -82,26 +75,61 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		xaResourcePool = new XAResourcePool(uniqueResourceMapping);
 		DubboTransactionManagerServiceImpl dubboTransactionManagerService = 
 				new DubboTransactionManagerServiceImpl(xaResourcePool,dubboXATransactionalResource);
+		
+		ProtocolConfig protocolConfig = config.getProtocolConfig();
+		ProtocolConfig xaProtocolConfig = null;
+		if(StringUtils.hasLength(config.getServiceDispatcher())){
+			xaProtocolConfig = new ProtocolConfig();
+			xaProtocolConfig.setPort(protocolConfig.getPort());
+			xaProtocolConfig.setName(protocolConfig.getName());
+			xaProtocolConfig.setDispatcher(config.getServiceDispatcher());
+		}else{
+			if(protocolConfig.getDispatcher() != null && protocolConfig.getDispatcher().equals("xa_all")){
+				xaProtocolConfig = protocolConfig;
+			}else{
+				xaProtocolConfig = new ProtocolConfig();
+				xaProtocolConfig.setPort(protocolConfig.getPort());
+				xaProtocolConfig.setName(protocolConfig.getName());
+				xaProtocolConfig.setDispatcher("xa_all");
+			}
+		}
+		
 		ServiceConfig<DubboTransactionManagerService> serviceConfig = new ServiceConfig<DubboTransactionManagerService>();
-		serviceConfig.setApplication(applicationConfig);
-        serviceConfig.setRegistry(registryConfig);
-        serviceConfig.setProtocol(protocolConfig);
-        serviceConfig.setProvider(providerConfig);
+		serviceConfig.setApplication(config.getApplicationConfig());
+        serviceConfig.setRegistry(config.getRegistryConfig());
+        serviceConfig.setProtocol(xaProtocolConfig);
+        serviceConfig.setProvider(config.getProviderConfig());
         serviceConfig.setInterface(DubboTransactionManagerService.class);
         serviceConfig.setRef(dubboTransactionManagerService);
         serviceConfig.setParameters(parameters);
+        if(StringUtils.hasLength(config.getServiceLoadbalance())){
+        	serviceConfig.setLoadbalance(config.getServiceLoadbalance());
+        }else{
+        	String loadbalance = config.getProviderConfig().getLoadbalance();
+        	if(loadbalance == null || !loadbalance.equals("sticky_roundrobin")){
+        		serviceConfig.setLoadbalance("sticky_roundrobin");
+        	}
+        }
         serviceConfig.export();
         localAddress = serviceConfig.toUrl().getAddress();
         dubboTransactionManagerService.setLocalAddress(localAddress);
         localDubboTransactionManagerService = dubboTransactionManagerService;
 	}
 	
-	private void reference(ApplicationConfig applicationConfig,RegistryConfig registryConfig,ConsumerConfig consumerConfig){
+	private void reference(DubboTransactionManagerServiceConfig config){
 		ReferenceConfig<DubboTransactionManagerService> referenceConfig = new ReferenceConfig<DubboTransactionManagerService>();
-		referenceConfig.setApplication(applicationConfig);
-		referenceConfig.setRegistry(registryConfig);
-		referenceConfig.setConsumer(consumerConfig);
+		referenceConfig.setApplication(config.getApplicationConfig());
+		referenceConfig.setRegistry(config.getRegistryConfig());
+		referenceConfig.setConsumer(config.getConsumerConfig());
 		referenceConfig.setInterface(DubboTransactionManagerService.class);
+		if(StringUtils.hasLength(config.getServiceLoadbalance())){
+			referenceConfig.setLoadbalance(config.getServiceLoadbalance());
+		}else{
+			String loadbalance = config.getProviderConfig().getLoadbalance();
+        	if(loadbalance == null || !loadbalance.equals("sticky_roundrobin")){
+        		referenceConfig.setLoadbalance("sticky_roundrobin");
+        	}
+		}
 		referenceConfig.setScope("remote");
 		remoteDubboTransactionManagerService = referenceConfig.get();
 	}
