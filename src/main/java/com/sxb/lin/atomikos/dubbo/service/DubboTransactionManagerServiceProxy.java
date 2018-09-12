@@ -259,4 +259,8 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		}
 		return false;
 	}
+	
+	public boolean isInit(){
+		return inited;
+	}
 }

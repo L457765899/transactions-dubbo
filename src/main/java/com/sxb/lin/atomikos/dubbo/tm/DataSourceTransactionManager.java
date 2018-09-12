@@ -90,6 +90,11 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 	
 	protected void doJtaBegin(Object transaction, TransactionDefinition definition) 
 			throws SQLException, NotSupportedException, SystemException {
+		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
+		if(!instance.isInit()){
+			throw new CannotCreateTransactionException(
+					"DubboTransactionManagerServiceProxy are not init,can not use this transactionManager to xa transaction.");
+		}
 		JdbcTransactionObjectSupport txObject = (JdbcTransactionObjectSupport) transaction;
 		if (txObject.hasConnectionHolder()) {
 			throw new CannotCreateTransactionException("can not create transaction,xa connection already exists");

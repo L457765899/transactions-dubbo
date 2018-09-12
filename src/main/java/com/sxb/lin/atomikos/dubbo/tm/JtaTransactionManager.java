@@ -57,6 +57,9 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 	
 	protected void newInitiatorXATransactionLocal() {
 		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
+		if(!instance.isInit()){
+			return;
+		}
 		CompositeTransactionManager compositeTransactionManager = Configuration.getCompositeTransactionManager();
 		CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction();
 		
