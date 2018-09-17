@@ -22,6 +22,7 @@ import org.springframework.transaction.NestedTransactionNotSupportedException;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.UnexpectedRollbackException;
+import org.springframework.transaction.jta.JtaTransactionObject;
 import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -52,20 +53,20 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		try {
 			ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
 			if(current == null){
-				this.checkInitiatorXATransactionLocal();
 				if(this.isUseJta()){
 					this.doJtaBegin(transaction, definition);
 					this.newInitiatorXATransactionLocal();
 				}else{
+					this.checkInitiatorXATransactionLocal();
 					super.doBegin(transaction, definition);
 				}
 			}else{
 				if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
-					this.checkInitiatorXATransactionLocal();
 					if(this.isUseJta()){
 						this.doJtaBegin(transaction, definition);
 						this.newInitiatorXATransactionLocal();
 					}else{
+						this.checkInitiatorXATransactionLocal();
 						super.doBegin(transaction, definition);
 					}
 					return;
@@ -296,6 +297,20 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		local.setTmAddress(instance.getLocalAddress());
 		local.setTimeOut(time + "");
 		local.bindToThread();
+	}
+	
+	@Override
+	protected boolean isExistingTransaction(Object transaction) {
+		if(this.isUseInitiatorXATransactionLocal()){
+			try {
+				return userTransaction.getStatus() != Status.STATUS_NO_TRANSACTION;
+			}
+			catch (SystemException ex) {
+				throw new TransactionSystemException("JTA failure on getStatus", ex);
+			}
+		}else{
+			return super.isExistingTransaction(transaction);
+		}
 	}
 	
 	@Override

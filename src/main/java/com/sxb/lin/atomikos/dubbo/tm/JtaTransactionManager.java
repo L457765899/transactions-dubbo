@@ -26,12 +26,10 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 		
 		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
 		if(current == null){
-			this.checkInitiatorXATransactionLocal();
 			super.doJtaBegin(txObject, definition);
 			this.newInitiatorXATransactionLocal();
 		}else{
 			if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
-				this.checkInitiatorXATransactionLocal();
 				super.doJtaBegin(txObject, definition);
 				this.newInitiatorXATransactionLocal();
 				return;
@@ -46,13 +44,6 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 			current.active();
 		}
 		
-	}
-	
-	protected void checkInitiatorXATransactionLocal() throws NotSupportedException{
-		InitiatorXATransactionLocal current = InitiatorXATransactionLocal.current();
-		if(current != null){
-			throw new NotSupportedException("can not begin,dubbo xa transaction already exists.");
-		}
 	}
 	
 	protected void newInitiatorXATransactionLocal() {
