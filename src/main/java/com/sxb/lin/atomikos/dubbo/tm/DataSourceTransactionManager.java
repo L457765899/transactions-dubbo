@@ -22,7 +22,6 @@ import org.springframework.transaction.NestedTransactionNotSupportedException;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.UnexpectedRollbackException;
-import org.springframework.transaction.jta.JtaTransactionObject;
 import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -50,21 +49,37 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 
 	@Override
 	protected void doBegin(Object transaction, TransactionDefinition definition) {
+		
 		try {
 			ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
 			if(current == null){
 				if(this.isUseJta()){
 					this.doJtaBegin(transaction, definition);
-					this.newInitiatorXATransactionLocal();
+					this.newInitiatorXATransactionLocal(definition.isReadOnly());
 				}else{
 					this.checkInitiatorXATransactionLocal();
 					super.doBegin(transaction, definition);
 				}
 			}else{
-				if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
-					if(this.isUseJta()){
+				boolean isUseJta = this.isUseJta();
+				if(definition.isReadOnly()){
+					if(current.isActive()){
+						throw new NotSupportedException("dubbo xa transaction not supported ReadOnly.");
+					}
+					if(isUseJta){
 						this.doJtaBegin(transaction, definition);
-						this.newInitiatorXATransactionLocal();
+						this.newInitiatorXATransactionLocal(true);
+					}else{
+						this.checkInitiatorXATransactionLocal();
+						super.doBegin(transaction, definition);
+					}
+					return;
+				}
+				
+				if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
+					if(isUseJta){
+						this.doJtaBegin(transaction, definition);
+						this.newInitiatorXATransactionLocal(false);
 					}else{
 						this.checkInitiatorXATransactionLocal();
 						super.doBegin(transaction, definition);
@@ -284,7 +299,7 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		}
 	}
 
-	protected void newInitiatorXATransactionLocal() {
+	protected void newInitiatorXATransactionLocal(boolean isReadOnly) {
 		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
 		CompositeTransactionManager compositeTransactionManager = Configuration.getCompositeTransactionManager();
 		CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction();
@@ -296,6 +311,7 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		local.setTid(tid);
 		local.setTmAddress(instance.getLocalAddress());
 		local.setTimeOut(time + "");
+		local.setReadOnly(isReadOnly);
 		local.bindToThread();
 	}
 	

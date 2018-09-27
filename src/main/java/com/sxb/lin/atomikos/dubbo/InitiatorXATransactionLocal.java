@@ -15,6 +15,8 @@ public class InitiatorXATransactionLocal {
     private String tmAddress;
     
     private String timeOut;
+    
+    private boolean isReadOnly;
 
 	public String getTmAddress() {
 		return tmAddress;
@@ -47,6 +49,14 @@ public class InitiatorXATransactionLocal {
 	
 	public void restoreThreadLocalStatus(){
 		CURRENT_LOCAL.set(oldXATransactionLocal);
+	}
+
+	public boolean isReadOnly() {
+		return isReadOnly;
+	}
+
+	public void setReadOnly(boolean isReadOnly) {
+		this.isReadOnly = isReadOnly;
 	}
 	
 }

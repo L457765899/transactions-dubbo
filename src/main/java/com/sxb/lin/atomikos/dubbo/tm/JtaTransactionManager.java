@@ -27,11 +27,20 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
 		if(current == null){
 			super.doJtaBegin(txObject, definition);
-			this.newInitiatorXATransactionLocal();
+			this.newInitiatorXATransactionLocal(definition.isReadOnly());
 		}else{
+			if(definition.isReadOnly()){
+				if(current.isActive()){
+					throw new NotSupportedException("dubbo xa transaction not supported ReadOnly.");
+				}
+				super.doJtaBegin(txObject, definition);
+				this.newInitiatorXATransactionLocal(true);
+				return;
+			}
+			
 			if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
 				super.doJtaBegin(txObject, definition);
-				this.newInitiatorXATransactionLocal();
+				this.newInitiatorXATransactionLocal(false);
 				return;
 			}
 			
@@ -46,7 +55,7 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 		
 	}
 	
-	protected void newInitiatorXATransactionLocal() {
+	protected void newInitiatorXATransactionLocal(boolean isReadOnly) {
 		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
 		if(!instance.isInit()){
 			return;
@@ -61,6 +70,7 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 		local.setTid(tid);
 		local.setTmAddress(instance.getLocalAddress());
 		local.setTimeOut(time + "");
+		local.setReadOnly(isReadOnly);
 		local.bindToThread();
 	}
 	
