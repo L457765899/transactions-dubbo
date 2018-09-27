@@ -8,8 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 当单数据源的项目想要使用分布式事务，
- * 除了使用@Transactional外，还要使用该注解
+ * 不使用dubbo分布式事务
  * @author lin
  *
  */
@@ -17,6 +16,6 @@ import java.lang.annotation.Target;
 @Inherited
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface XA {
+public @interface NOXA {
 	
 }

@@ -14,6 +14,8 @@ import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerService;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
+import com.sxb.lin.atomikos.dubbo.spring.XAAnnotationInfo;
+import com.sxb.lin.atomikos.dubbo.spring.XAInvocationLocal;
 
 
 public class JtaTransactionManager extends org.springframework.transaction.jta.JtaTransactionManager {
@@ -24,23 +26,27 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 	protected void doJtaBegin(JtaTransactionObject txObject, TransactionDefinition definition) 
 			throws NotSupportedException,SystemException {
 		
+		XAAnnotationInfo info = XAInvocationLocal.info();
+		if(info.isNoXA()){
+			this.doJtaBegin(txObject, definition, false);
+			return;
+		}
+		
 		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
 		if(current == null){
-			super.doJtaBegin(txObject, definition);
-			this.newInitiatorXATransactionLocal(definition.isReadOnly());
+			boolean isActive = definition.isReadOnly() ? false : true;
+			this.doJtaBegin(txObject, definition, isActive);
 		}else{
 			if(definition.isReadOnly()){
 				if(current.isActive()){
 					throw new NotSupportedException("dubbo xa transaction not supported ReadOnly.");
 				}
-				super.doJtaBegin(txObject, definition);
-				this.newInitiatorXATransactionLocal(true);
+				this.doJtaBegin(txObject, definition, false);
 				return;
 			}
 			
 			if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
-				super.doJtaBegin(txObject, definition);
-				this.newInitiatorXATransactionLocal(false);
+				this.doJtaBegin(txObject, definition, true);
 				return;
 			}
 			
@@ -50,12 +56,19 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 			if(definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW){
 				throw new NotSupportedException("dubbo xa transaction not supported PROPAGATION_REQUIRES_NEW.");
 			}
+			
 			current.active();
 		}
 		
 	}
 	
-	protected void newInitiatorXATransactionLocal(boolean isReadOnly) {
+	private void doJtaBegin(JtaTransactionObject txObject, TransactionDefinition definition, boolean isActive) 
+			throws NotSupportedException, SystemException{
+		super.doJtaBegin(txObject, definition);
+		this.newInitiatorXATransactionLocal(isActive);
+	}
+	
+	protected void newInitiatorXATransactionLocal(boolean isActive) {
 		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
 		if(!instance.isInit()){
 			return;
@@ -70,7 +83,7 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 		local.setTid(tid);
 		local.setTmAddress(instance.getLocalAddress());
 		local.setTimeOut(time + "");
-		local.setReadOnly(isReadOnly);
+		local.setActive(isActive);
 		local.bindToThread();
 	}
 	

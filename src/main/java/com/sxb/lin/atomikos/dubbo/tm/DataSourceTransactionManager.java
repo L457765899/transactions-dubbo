@@ -1,6 +1,5 @@
 package com.sxb.lin.atomikos.dubbo.tm;
 
-import java.lang.reflect.Method;
 import java.sql.SQLException;
 
 import javax.sql.XADataSource;
@@ -13,8 +12,6 @@ import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 import javax.transaction.UserTransaction;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.datasource.JdbcTransactionObjectSupport;
 import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.HeuristicCompletionException;
@@ -30,9 +27,9 @@ import com.atomikos.icatch.CompositeTransactionManager;
 import com.atomikos.icatch.config.Configuration;
 import com.sxb.lin.atomikos.dubbo.InitiatorXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
-import com.sxb.lin.atomikos.dubbo.annotation.XA;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerService;
 import com.sxb.lin.atomikos.dubbo.service.DubboTransactionManagerServiceProxy;
+import com.sxb.lin.atomikos.dubbo.spring.XAAnnotationInfo;
 import com.sxb.lin.atomikos.dubbo.spring.XAInvocationLocal;
 import com.sxb.lin.atomikos.dubbo.spring.jdbc.InitiatorXADataSourceUtils;
 import com.sxb.lin.atomikos.dubbo.spring.jdbc.XAConnectionHolder;
@@ -40,8 +37,6 @@ import com.sxb.lin.atomikos.dubbo.spring.jdbc.XAConnectionHolder;
 public class DataSourceTransactionManager extends org.springframework.jdbc.datasource.DataSourceTransactionManager {
 
 	private static final long serialVersionUID = 1L;
-	
-	private static final Logger LOGGER = LoggerFactory.getLogger(DataSourceTransactionManager.class);
 	
 	private transient UserTransaction userTransaction;
 	
@@ -51,39 +46,27 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 	protected void doBegin(Object transaction, TransactionDefinition definition) {
 		
 		try {
+			XAAnnotationInfo info = XAInvocationLocal.info();
+			if(info.isNoXA()){
+				this.doBegin(transaction, definition, false, info.isUseXA());
+				return;
+			}
+			
 			ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
 			if(current == null){
-				if(this.isUseJta()){
-					this.doJtaBegin(transaction, definition);
-					this.newInitiatorXATransactionLocal(definition.isReadOnly());
-				}else{
-					this.checkInitiatorXATransactionLocal();
-					super.doBegin(transaction, definition);
-				}
+				boolean isActive = definition.isReadOnly() ? false : true;
+				this.doBegin(transaction, definition, isActive, info.isUseXA());
 			}else{
-				boolean isUseJta = this.isUseJta();
 				if(definition.isReadOnly()){
 					if(current.isActive()){
 						throw new NotSupportedException("dubbo xa transaction not supported ReadOnly.");
 					}
-					if(isUseJta){
-						this.doJtaBegin(transaction, definition);
-						this.newInitiatorXATransactionLocal(true);
-					}else{
-						this.checkInitiatorXATransactionLocal();
-						super.doBegin(transaction, definition);
-					}
+					this.doBegin(transaction, definition, false, info.isUseXA());
 					return;
 				}
 				
 				if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
-					if(isUseJta){
-						this.doJtaBegin(transaction, definition);
-						this.newInitiatorXATransactionLocal(false);
-					}else{
-						this.checkInitiatorXATransactionLocal();
-						super.doBegin(transaction, definition);
-					}
+					this.doBegin(transaction, definition, true, info.isUseXA());
 					return;
 				}
 				
@@ -93,6 +76,7 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 				if(definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW){
 					throw new NestedTransactionNotSupportedException("dubbo xa transaction not supported PROPAGATION_REQUIRES_NEW.");
 				}
+				
 				current.active();
 			}
 		} catch (NotSupportedException e) {
@@ -102,6 +86,17 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		} catch (SQLException e) {
 			throw new CannotCreateTransactionException("JTA failure on begin", e);
 		} 
+	}
+	
+	private void doBegin(Object transaction, TransactionDefinition definition, boolean isActive, boolean isUseXA) 
+			throws SQLException, NotSupportedException, SystemException{
+		if(isUseXA){
+			this.doJtaBegin(transaction, definition);
+			this.newInitiatorXATransactionLocal(isActive);
+		}else{
+			this.checkInitiatorXATransactionLocal();
+			super.doBegin(transaction, definition);
+		}
 	}
 	
 	protected void doJtaBegin(Object transaction, TransactionDefinition definition) 
@@ -258,25 +253,7 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		}
 	}
 
-	protected boolean isUseJta(){
-		XAInvocationLocal current = XAInvocationLocal.current();
-		if(current != null){
-			Method method = current.getMethod();
-			try {
-				Method methodImpl = current.getTargetClass().getMethod(method.getName(), method.getParameterTypes());
-				XA annotation = methodImpl.getAnnotation(XA.class);
-				current.clear();
-				if(annotation != null){
-					return true;
-				}
-			} catch (NoSuchMethodException e) {
-				LOGGER.error(e.getMessage(),e);
-			} catch (SecurityException e) {
-				LOGGER.error(e.getMessage(),e);
-			}
-		}
-		return false;
-	}
+	
 	
 	private void restoreThreadLocalStatus(){
 		InitiatorXATransactionLocal current = InitiatorXATransactionLocal.current();
@@ -299,7 +276,7 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		}
 	}
 
-	protected void newInitiatorXATransactionLocal(boolean isReadOnly) {
+	protected void newInitiatorXATransactionLocal(boolean isActive) {
 		DubboTransactionManagerServiceProxy instance = DubboTransactionManagerServiceProxy.getInstance();
 		CompositeTransactionManager compositeTransactionManager = Configuration.getCompositeTransactionManager();
 		CompositeTransaction compositeTransaction = compositeTransactionManager.getCompositeTransaction();
@@ -311,7 +288,7 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		local.setTid(tid);
 		local.setTmAddress(instance.getLocalAddress());
 		local.setTimeOut(time + "");
-		local.setReadOnly(isReadOnly);
+		local.setActive(isActive);
 		local.bindToThread();
 	}
 	

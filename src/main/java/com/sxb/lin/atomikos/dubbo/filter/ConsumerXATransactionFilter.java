@@ -22,7 +22,7 @@ public class ConsumerXATransactionFilter implements Filter {
 		
 		if(invoker.getInterface() != DubboTransactionManagerService.class){
 			InitiatorXATransactionLocal icurrent = InitiatorXATransactionLocal.current();
-			if(icurrent != null && !icurrent.isReadOnly()){
+			if(icurrent != null && icurrent.isActive()){
 				RpcContext context = RpcContext.getContext();
 				context.setAttachment(XA_TM_ADDRESS_KEY,icurrent.getTmAddress());
 				context.setAttachment(XA_TID_KEY, icurrent.getTid());
