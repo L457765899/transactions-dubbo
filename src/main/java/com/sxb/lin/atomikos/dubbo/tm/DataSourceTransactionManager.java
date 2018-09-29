@@ -1,5 +1,6 @@
 package com.sxb.lin.atomikos.dubbo.tm;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 
 import javax.sql.XADataSource;
@@ -12,6 +13,8 @@ import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 import javax.transaction.UserTransaction;
 
+import org.springframework.jdbc.datasource.ConnectionHandle;
+import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.jdbc.datasource.JdbcTransactionObjectSupport;
 import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.HeuristicCompletionException;
@@ -244,10 +247,24 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 	
 	@Override
 	protected void prepareForCommit(DefaultTransactionStatus status) {
+		if(!ParticipantXATransactionLocal.isUseParticipantXATransaction()){
+			return;
+		}
+		
 		JdbcTransactionObjectSupport transaction = (JdbcTransactionObjectSupport) status.getTransaction();
 		XADataSource xaDataSource = (XADataSource) this.getDataSource();
 		Object resource = TransactionSynchronizationManager.getResource(xaDataSource);
-		if(resource instanceof XAConnectionHolder){
+		if(status.isNewTransaction() && resource == null){
+			ConnectionHandle connectionHandle = new ConnectionHandle(){
+				public Connection getConnection() {
+					return null;
+				}
+				public void releaseConnection(Connection con) {
+				}
+			};
+			ConnectionHolder holder = new ConnectionHolder(connectionHandle);
+			transaction.setConnectionHolder(holder);
+		}else if(resource instanceof XAConnectionHolder){
 			XAConnectionHolder holder = (XAConnectionHolder) resource;
 			transaction.setConnectionHolder(holder);
 		}
