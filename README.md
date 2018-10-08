@@ -49,7 +49,7 @@ dubbo项目基于atomikos的分布式事务管理
 
 #### 	5.recover
 
-​	
+​	atomikos的recover机制是每隔一段时间用xa recover命令访问本地数据库资源查询未完成的事务，把这些事务与本地日志未完成的事务做对比，如果本地事务有相关的日志就执行提交或者回滚，恢复之前未完成的事务。transactions-dubbo的recover机制也是使用atomikos的recover机制，但是每一个执行过的远程资源都会有一个过期时间（过期时间就是事务过期的时间加了3秒），超过过期时间的远程资源会被清除，这样就不会每一个资源一直执行xa recover。
 
 ## 使用说明
 
@@ -198,8 +198,10 @@ dubbo项目基于atomikos的分布式事务管理
 		
 		TransactionAttributeSource transactionAttributeSource = 
 			transactionInterceptor.getTransactionAttributeSource();
+			
     	TransactionAttributeSourceProxy transactionAttributeSourceProxy = 
     		new TransactionAttributeSourceProxy();
+
     	transactionAttributeSourceProxy.setTransactionAttributeSource(
                   transactionAttributeSource);
     	transactionInterceptor.setTransactionAttributeSource(transactionAttributeSourceProxy);
