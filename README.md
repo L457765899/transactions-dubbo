@@ -47,9 +47,195 @@ dubbo项目基于atomikos的分布式事务管理
 
 ​	![调用时序图](https://raw.githubusercontent.com/L457765899/transactions-dubbo/master/2.png)
 
+#### 	5.recover
+
+​	
+
 ## 使用说明
 
-​	未完待续...
+#### 1.连接池配置
+
+多数据源项目
+
+```java
+	@Primary
+    @Bean(initMethod = "init",destroyMethod = "close")
+	public DataSource dataSource1() throws SQLException{
+		
+		DruidXADataSource druidXADataSource = new DruidXADataSource();
+        druidXADataSource.setUrl("jdbc:mysql://ip:3306/demo1-a");
+        druidXADataSource.setUsername("用户名");
+        druidXADataSource.setPassword("密码");
+        
+        AtomikosDataSourceBean atomikosDataSourceBean = new AtomikosDataSourceBean();
+        atomikosDataSourceBean.setUniqueResourceName("数据库唯一资源名");
+        atomikosDataSourceBean.setXaDataSource(druidXADataSource);
+        
+        return atomikosDataSourceBean;
+	}
+
+	@Bean(initMethod = "init",destroyMethod = "close")
+	public DataSource dataSource2() throws SQLException{
+		
+		DruidXADataSource druidXADataSource = new DruidXADataSource();
+        druidXADataSource.setUrl("jdbc:mysql://ip:3306/demo1-b");
+        druidXADataSource.setUsername("用户名");
+        druidXADataSource.setPassword("密码");
+        
+        AtomikosDataSourceBean atomikosDataSourceBean = new AtomikosDataSourceBean();
+        atomikosDataSourceBean.setUniqueResourceName("数据库唯一资源名");
+        atomikosDataSourceBean.setXaDataSource(druidXADataSource);
+        
+        return atomikosDataSourceBean;
+	}
+```
+
+单数据源项目
+
+```java
+	@Bean(initMethod = "init",destroyMethod = "close")
+	public DataSource dataSource() throws SQLException{
+		
+		DruidXADataSource druidXADataSource = new DruidXADataSource();
+        druidXADataSource.setUrl("jdbc:mysql://192.168.0.252:3306/demo3-a");
+        druidXADataSource.setUsername("用户名");
+        druidXADataSource.setPassword("密码");
+        
+        return druidXADataSource;
+	}
+```
+
+#### 2.事务管理器配置
+
+多数据源项目
+
+```sql
+	@Bean(initMethod="init",destroyMethod="close")
+    public UserTransactionManager userTransactionManager(){
+        UserTransactionManager userTransactionManager = new UserTransactionManager();
+        return userTransactionManager;
+    }
+    
+    @Bean
+    public UserTransactionImp userTransactionImp() throws SystemException{
+        UserTransactionImp userTransaction = new UserTransactionImp();
+        return userTransaction;
+    }
+    
+    //使用com.sxb.lin.atomikos.dubbo.tm.JtaTransactionManager
+    @Bean
+    @Autowired
+    public JtaTransactionManager jtaTransactionManager(
+    		UserTransactionManager userTransactionManager,UserTransactionImp userTransaction){
+        JtaTransactionManager jtaTransactionManager = new JtaTransactionManager();
+        jtaTransactionManager.setUserTransaction(userTransaction);
+        jtaTransactionManager.setTransactionManager(userTransactionManager);
+        return jtaTransactionManager;
+    }
+```
+
+单数据源项目
+
+```java
+	@Bean(initMethod="init",destroyMethod="close")
+    public UserTransactionManager userTransactionManager(){
+        UserTransactionManager userTransactionManager = new UserTransactionManager();
+        return userTransactionManager;
+    }
+    
+    @Bean
+    public UserTransactionImp userTransactionImp() throws SystemException{
+        UserTransactionImp userTransaction = new UserTransactionImp();
+        return userTransaction;
+    }
+
+	//使用com.sxb.lin.atomikos.dubbo.tm.DataSourceTransactionManager
+	@Bean
+	@Autowired
+    public DataSourceTransactionManager dataSourceTransactionManager(
+    		UserTransactionManager userTransactionManager,
+    		UserTransactionImp userTransaction,DataSource dataSource){
+    	DataSourceTransactionManager dataSourceTransactionManager = 
+    			new DataSourceTransactionManager();
+    	dataSourceTransactionManager.setDataSource(dataSource);
+    	dataSourceTransactionManager.setUserTransaction(userTransaction);
+    	dataSourceTransactionManager.setTransactionManager(userTransactionManager);
+    	return dataSourceTransactionManager;
+    }
+```
+
+#### 3.SqlSessionFactory配置
+
+```java
+	//多数据源项目需要配置多个，单数据源项目配置一个
+	@Bean
+	@Autowired
+    public SqlSessionFactoryBean sqlSessionFactory(DataSource dataSource) throws IOException{
+        SqlSessionFactoryBean bean = new SqlSessionFactoryBean();
+        PathMatchingResourcePatternResolver resolver = 
+        		new PathMatchingResourcePatternResolver();  
+        bean.setDataSource(dataSource);
+        bean.setMapperLocations(resolver.getResources(
+        		"classpath:com/sxb/lin/transactions/dubbo/test/demo3/a/mapping/*.xml"));
+        bean.setTransactionFactory(new XASpringManagedTransactionFactory("数据库唯一资源名"));
+        return bean;
+    }
+```
+
+#### 4.transactions-dubbo配置
+
+```sql
+	//在配置transactions-dubbo之前，请确保已经配置好相关的dubbo配置
+	@Bean
+	@Autowired
+	public DubboTransactionManagerServiceProxy dubboTransactionManagerServiceProxy(
+			ApplicationConfig applicationConfig, RegistryConfig registryConfig, 
+			ProtocolConfig protocolConfig, ProviderConfig providerConfig, 
+      		ConsumerConfig consumerConfig,
+			@Qualifier("dataSource1") DataSource ds1, 
+      		@Qualifier("dataSource2") DataSource ds2,
+			TransactionInterceptor transactionInterceptor){
+		
+		TransactionAttributeSource transactionAttributeSource = 
+			transactionInterceptor.getTransactionAttributeSource();
+    	TransactionAttributeSourceProxy transactionAttributeSourceProxy = 
+    		new TransactionAttributeSourceProxy();
+    	transactionAttributeSourceProxy.setTransactionAttributeSource(
+                  transactionAttributeSource);
+    	transactionInterceptor.setTransactionAttributeSource(transactionAttributeSourceProxy);
+		
+		Map<String,UniqueResource> dataSourceMapping = 
+			new HashMap<String, UniqueResource>();
+		dataSourceMapping.put("数据库唯一资源名A", 
+        	new DataSourceResource("数据库唯一资源名A", ds1));
+		dataSourceMapping.put("数据库唯一资源名B", 
+            new DataSourceResource("数据库唯一资源名B", ds2));
+		
+		Set<String> excludeResourceNames = new HashSet<>();
+		excludeResourceNames.add("数据库唯一资源名A");
+		excludeResourceNames.add("数据库唯一资源名B");
+		
+		DubboTransactionManagerServiceConfig config = 
+			new DubboTransactionManagerServiceConfig();
+		config.setApplicationConfig(applicationConfig);
+		config.setRegistryConfig(registryConfig);
+		config.setProtocolConfig(protocolConfig);
+		config.setProviderConfig(providerConfig);
+		config.setConsumerConfig(consumerConfig);
+		config.setUniqueResourceMapping(dataSourceMapping);
+		config.setExcludeResourceNames(excludeResourceNames);
+		
+		DubboTransactionManagerServiceProxy instance = 
+			DubboTransactionManagerServiceProxy.getInstance();
+		instance.init(config);
+		
+		return instance;
+	}
+```
+
+#### 5.更多配置
+
+​	更多配置请参观demo
 
 ## demo演示
 
