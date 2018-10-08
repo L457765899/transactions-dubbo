@@ -41,7 +41,11 @@ dubbo项目基于atomikos的分布式事务管理
 
 #### 	3.项目结构
 
+​	![项目结构图](https://raw.githubusercontent.com/L457765899/transactions-dubbo/master/1.png)
+
 #### 	4.调用时序图
+
+​	![调用时序图](https://raw.githubusercontent.com/L457765899/transactions-dubbo/master/2.png)
 
 ## 使用说明
 
