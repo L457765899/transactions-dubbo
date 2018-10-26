@@ -44,7 +44,7 @@ public class MQProducerFor2PC extends TransactionMQProducer{
 		super(producerGroup);
 	}
 	
-	protected void doSendMessageAfterTransaction(Message msg, boolean async){
+	protected void send1PCMessageInTransaction(Message msg, boolean async, boolean beforeCommit){
 		if(ParticipantXATransactionLocal.isUseParticipantXATransaction()){
 			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToDubbo(this, async);
 			mqMessagesHolder.addMessage(msg);
@@ -64,17 +64,25 @@ public class MQProducerFor2PC extends TransactionMQProducer{
 				throw new RuntimeException("transaction not start.");
 			}
 			
-			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToLocal(this, async);
+			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToLocal(this, async, beforeCommit);
 			mqMessagesHolder.addMessage(msg);
 		}
 	}
 
-	public void sendMessageAfterTransaction(Message msg){
-		this.doSendMessageAfterTransaction(msg, false);
+	public void sendMessageBeforeCommit(Message msg){
+		this.send1PCMessageInTransaction(msg, false, true);
 	}
 	
-	public void sendAsyncMessageAfterTransaction(Message msg){
-		this.doSendMessageAfterTransaction(msg, true);
+	public void sendAsyncMessageBeforeCommit(Message msg){
+		this.send1PCMessageInTransaction(msg, true, true);
+	}
+	
+	public void sendMessageAfterCommit(Message msg){
+		this.send1PCMessageInTransaction(msg, false, false);
+	}
+	
+	public void sendAsyncMessageAfterCommit(Message msg){
+		this.send1PCMessageInTransaction(msg, true, false);
 	}
 
 	public void send2PCMessageInTransaction(Message msg){

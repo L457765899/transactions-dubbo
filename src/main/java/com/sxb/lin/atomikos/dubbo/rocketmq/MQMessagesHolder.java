@@ -11,6 +11,8 @@ public class MQMessagesHolder extends ResourceHolderSupport{
 	private List<Message> messages;
 	
 	private boolean async;
+	
+	private boolean beforeCommit;
 
 	public MQMessagesHolder() {
 		this.messages = new ArrayList<Message>();
@@ -25,6 +27,7 @@ public class MQMessagesHolder extends ResourceHolderSupport{
 		super.reset();
 		messages = null;
 		async = false;
+		beforeCommit = false;
 	}
 	
 	public boolean isEmpty(){
@@ -45,6 +48,14 @@ public class MQMessagesHolder extends ResourceHolderSupport{
 
 	public void setAsync(boolean async) {
 		this.async = async;
+	}
+
+	public boolean isBeforeCommit() {
+		return beforeCommit;
+	}
+
+	public void setBeforeCommit(boolean beforeCommit) {
+		this.beforeCommit = beforeCommit;
 	}
 	
 }

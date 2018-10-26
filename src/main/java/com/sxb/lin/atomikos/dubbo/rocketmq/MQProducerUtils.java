@@ -17,7 +17,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 public abstract class MQProducerUtils {
 	
-	public static MQMessagesHolder getMQMessagesHolderToLocal(MQProducerFor2PC producer,boolean async){
+	public static MQMessagesHolder getMQMessagesHolderToLocal(MQProducerFor2PC producer, boolean async, boolean beforeCommit){
 		
 		MQMessagesHolder mqmHolder = (MQMessagesHolder) TransactionSynchronizationManager.getResource(producer);
 		if(mqmHolder != null){
@@ -26,6 +26,7 @@ public abstract class MQProducerUtils {
 		
 		mqmHolder = new MQMessagesHolder();
 		mqmHolder.setAsync(async);
+		mqmHolder.setBeforeCommit(beforeCommit);
 		TransactionSynchronizationManager.registerSynchronization(new LocalMQMessagesSynchronization(producer, mqmHolder));
 		TransactionSynchronizationManager.bindResource(producer, mqmHolder);
 		return mqmHolder;
@@ -146,6 +147,13 @@ public abstract class MQProducerUtils {
 				TransactionSynchronizationManager.bindResource(this.producer, this.mqmHolder);
 			}
 		}
+		
+		@Override
+		public void beforeCommit(boolean readOnly) {
+			if(this.mqmHolder.isBeforeCommit()){
+				send(this.producer, this.mqmHolder);
+			}
+		}
 
 		@Override
 		public void beforeCompletion() {
@@ -154,8 +162,10 @@ public abstract class MQProducerUtils {
 		}
 		
 		@Override
-		public void beforeCommit(boolean readOnly) {
-			send(this.producer, this.mqmHolder);
+		public void afterCommit() {
+			if(!this.mqmHolder.isBeforeCommit()){
+				send(this.producer, this.mqmHolder);
+			}
 		}
 
 		@Override
