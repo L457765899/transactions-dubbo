@@ -1,6 +1,7 @@
 package com.sxb.lin.atomikos.dubbo.pool;
 
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -125,6 +126,8 @@ public class XAResourcePool implements Runnable{
 					}
 					throw new XAException("XAResourceHolder or XAConnection is not exist.");
 				}
+			} catch(SQLFeatureNotSupportedException e){
+				throw new XAException(e.getMessage());
 			} catch (SQLException e) {
 				LOGGER.error(e.getMessage(), e);
 			} finally {
@@ -152,6 +155,8 @@ public class XAResourcePool implements Runnable{
 					}
 					throw new XAException("XAResourceHolder or XAConnection is not exist.");
 				}
+			} catch(SQLFeatureNotSupportedException e){
+				throw new XAException(e.getMessage());
 			} catch (SQLException e) {
 				LOGGER.error(e.getMessage(), e);
 			} finally {
