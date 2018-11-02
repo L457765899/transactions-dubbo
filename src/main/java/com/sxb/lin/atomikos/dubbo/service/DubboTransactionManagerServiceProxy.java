@@ -36,6 +36,10 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 	public static DubboTransactionManagerServiceProxy getInstance(){
 		return INSTANCE;
 	}
+	
+	private ReferenceConfig<DubboTransactionManagerService> referenceConfig;
+	
+	private ServiceConfig<DubboTransactionManagerService> serviceConfig;
 
 	private DubboTransactionManagerService remoteDubboTransactionManagerService;
 	
@@ -111,9 +115,10 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
         	}
         }
         serviceConfig.export();
-        localAddress = serviceConfig.toUrl().getAddress();
-        dubboTransactionManagerService.setLocalAddress(localAddress);
-        localDubboTransactionManagerService = dubboTransactionManagerService;
+        this.localAddress = serviceConfig.toUrl().getAddress();
+        dubboTransactionManagerService.setLocalAddress(this.localAddress);
+        this.localDubboTransactionManagerService = dubboTransactionManagerService;
+        this.serviceConfig = serviceConfig;
 	}
 	
 	private void reference(DubboTransactionManagerServiceConfig config){
@@ -131,7 +136,8 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
         	}
 		}
 		referenceConfig.setScope("remote");
-		remoteDubboTransactionManagerService = referenceConfig.get();
+		this.remoteDubboTransactionManagerService = referenceConfig.get();
+		this.referenceConfig = referenceConfig;
 	}
 	
 	private void check(Object service){
@@ -152,6 +158,24 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
 		dubboXid.setBranchQualifierStr(new String(xid.getBranchQualifier()));
 		dubboXid.setGlobalTransactionIdStr(new String(xid.getGlobalTransactionId()));
 		return dubboXid;
+	}
+	
+	public void destory() {
+		if(this.inited){
+			this.serviceConfig.unexport();
+			this.referenceConfig.destroy();
+			this.xaResourcePool.destory();
+			
+			this.serviceConfig = null;
+			this.referenceConfig = null;
+			this.remoteDubboTransactionManagerService = null;
+			this.localDubboTransactionManagerService = null;
+			this.xaResourcePool = null;
+			this.dubboXATransactionalResource = null;
+			this.inited = false;
+			this.localAddress = null;
+			this.uniqueResourceNames = null;
+		}
 	}
 
 	public DubboTransactionManagerService getRemoteDubboTransactionManagerService() {

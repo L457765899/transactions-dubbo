@@ -184,4 +184,14 @@ public class XAResourcePool implements Runnable{
 			}
 		}
 	}
+	
+	public void destory() {
+		if(scheduledExecutorService != null 
+				&& !scheduledExecutorService.isShutdown()){
+			scheduledExecutorService.shutdown();
+			this.cachePool.clear();
+			this.uniqueResourceMapping = null;
+			this.scheduledExecutorService = null;
+		}
+	}
 }
