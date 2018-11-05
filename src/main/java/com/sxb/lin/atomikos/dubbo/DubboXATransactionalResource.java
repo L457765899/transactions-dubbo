@@ -11,7 +11,6 @@ import javax.transaction.xa.XAResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.atomikos.datasource.RecoverableResource;
 import com.atomikos.datasource.ResourceException;
 import com.atomikos.datasource.TransactionalResource;
 import com.atomikos.datasource.xa.XATransactionalResource;
@@ -134,16 +133,7 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 		return now > entry.expires;
 	}
 	
-	private TransactionalResource createTransactionalResource(String uniqueResourceName,long timeout){
-		recoverMap.remove(uniqueResourceName);
-		uniqueResourceNameMap.put(uniqueResourceName, timeout);
-		TransactionalResource transactionalResource = new TemporaryXATransactionalResource(uniqueResourceName);
-		TransactionServiceProvider transactionService = (TransactionServiceProvider) Configuration.getTransactionService();
-		transactionalResource.setRecoveryService(transactionService.getRecoveryService());
-		return transactionalResource;
-	}
-	
-	public TransactionalResource findOrCreateTransactionalResource(String uniqueResourceName,long timeout) {
+	public TransactionalResource createTransactionalResource(String uniqueResourceName,long timeout){
 		if(uniqueResourceName.startsWith(MQProducerFor2PC.MQ_UNIQUE_TOPIC_PREFIX)){
 			TransactionalResource transactionalResource = new TemporaryXATransactionalResource(uniqueResourceName){
 				@Override
@@ -156,13 +146,11 @@ public class DubboXATransactionalResource extends XATransactionalResource{
 			return transactionalResource;
 		}
 		
-		RecoverableResource resource = Configuration.getResource(uniqueResourceName);
-		TransactionalResource ret = null;
-		if(resource == null){
-			ret = this.createTransactionalResource(uniqueResourceName,timeout);
-		} else {
-			ret = (TransactionalResource) resource;
-		}
-		return ret;
+		recoverMap.remove(uniqueResourceName);
+		uniqueResourceNameMap.put(uniqueResourceName, timeout);
+		TransactionalResource transactionalResource = new TemporaryXATransactionalResource(uniqueResourceName);
+		TransactionServiceProvider transactionService = (TransactionServiceProvider) Configuration.getTransactionService();
+		transactionalResource.setRecoveryService(transactionService.getRecoveryService());
+		return transactionalResource;
 	}
 }

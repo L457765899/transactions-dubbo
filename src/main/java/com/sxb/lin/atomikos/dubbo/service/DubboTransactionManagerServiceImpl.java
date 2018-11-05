@@ -96,7 +96,7 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 
 		long startTime = System.currentTimeMillis();
 		long timeout = compositeTransaction.getTimeout() + DubboTransactionManagerService.ADD_TIME;
-		TransactionalResource res = dubboXATransactionalResource.findOrCreateTransactionalResource(uniqueResourceName,startTime + timeout);
+		TransactionalResource res = dubboXATransactionalResource.createTransactionalResource(uniqueResourceName,startTime + timeout);
 		XAResourceTransaction restx = (XAResourceTransaction) res.getResourceTransaction(compositeTransaction);
 		restx.setXAResource(xaResource);
 		restx.resume();
