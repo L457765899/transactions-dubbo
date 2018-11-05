@@ -137,6 +137,11 @@ public abstract class XAResourceHolder {
 		}else if(this.currentStatus == XA_END){
 			this.xaResource.rollback(xid);
 			this.currentStatus = XA_ROLLBACK;
+		}else if(this.currentStatus == XA_START){
+			this.xaResource.end(xid, XAResource.TMSUCCESS);
+			this.currentStatus = XA_END;
+			this.xaResource.rollback(xid);
+			this.currentStatus = XA_ROLLBACK;
 		}else{
 			throw new XAException("xaResource can not xa rollback,currentStatus value " 
 					+ this.getStrCurrentStatus(currentStatus) + " is error.");
