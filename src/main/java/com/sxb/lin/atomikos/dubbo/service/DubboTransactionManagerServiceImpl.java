@@ -82,20 +82,27 @@ public class DubboTransactionManagerServiceImpl implements DubboTransactionManag
 		case Status.STATUS_MARKED_ROLLBACK:
 		case Status.STATUS_ROLLEDBACK:
 		case Status.STATUS_ROLLING_BACK:
-			String msg = "Transaction rollback - enlisting more resources is useless.";
+			String msg = "Transaction rollback - enlisting " + uniqueResourceName + " resources is useless.";
 			LOGGER.warn(msg);
 			throw new javax.transaction.RollbackException(msg);
 		case Status.STATUS_COMMITTED:
 		case Status.STATUS_PREPARED:
 		case Status.STATUS_UNKNOWN:
-			msg = "Enlisting more resources is no longer permitted: transaction is in state "
+			msg = "Enlisting " + uniqueResourceName + " resources is no longer permitted: transaction is in state "
 					+ compositeTransaction.getState();
 			LOGGER.warn(msg);
 			throw new IllegalStateException(msg);
 		}
 
+		long transactionTimeout =  compositeTransaction.getTimeout();
+		if(transactionTimeout <= 0){
+			String msg = "Transaction has timed out - enlisting " + uniqueResourceName + " resources is useless.";
+			LOGGER.warn(msg);
+			throw new javax.transaction.RollbackException(msg);
+		}
+		
+		long timeout = transactionTimeout + DubboTransactionManagerService.ADD_TIME;
 		long startTime = System.currentTimeMillis();
-		long timeout = compositeTransaction.getTimeout() + DubboTransactionManagerService.ADD_TIME;
 		TransactionalResource res = dubboXATransactionalResource.createTransactionalResource(uniqueResourceName,startTime + timeout);
 		XAResourceTransaction restx = (XAResourceTransaction) res.getResourceTransaction(compositeTransaction);
 		restx.setXAResource(xaResource);
