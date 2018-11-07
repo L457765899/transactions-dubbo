@@ -109,6 +109,8 @@ dubbo项目基于atomikos的分布式事务管理
 
 多数据源项目
 
+事物的使用：只需要在事物发起者和事物参与者的方法上加@Transactional注解
+
 ```sql
     @Bean(initMethod="init",destroyMethod="close")
     public UserTransactionManager userTransactionManager(){
@@ -135,6 +137,11 @@ dubbo项目基于atomikos的分布式事务管理
 ```
 
 单数据源项目
+
+事物的使用：只需要在事物发起者的方法上加@Transactional、@XA注解，事物参与者的方法上加@Transactional注解
+
+<font color=red>注意：单数据源项目的事物发起者比多数据源的事物发起者多了一个@XA注解，原因是单数据源默认使用的是1段提交，
+加@XA注解的目的是让单数据源的项目使用2段提交，事物参与者单数据源项目和多数据源项目一样加一个@Transactional注解就够了</font>
 
 ```java
     @Bean(initMethod="init",destroyMethod="close")
