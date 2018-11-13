@@ -3,6 +3,7 @@ package com.sxb.lin.atomikos.dubbo.tm;
 import javax.transaction.NotSupportedException;
 import javax.transaction.SystemException;
 
+import org.springframework.transaction.NestedTransactionNotSupportedException;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.jta.JtaTransactionObject;
 import org.springframework.transaction.support.DefaultTransactionStatus;
@@ -37,24 +38,20 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 			boolean isActive = definition.isReadOnly() ? false : true;
 			this.doJtaBegin(txObject, definition, isActive);
 		}else{
-			if(definition.isReadOnly()){
-				if(current.isActive()){
-					throw new NotSupportedException("dubbo xa transaction not supported ReadOnly.");
-				}
-				this.doJtaBegin(txObject, definition, false);
-				return;
-			}
-			
 			if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
-				this.doJtaBegin(txObject, definition, true);
+				boolean isActive = definition.isReadOnly() ? false : true;
+				this.doJtaBegin(txObject, definition, isActive);
 				return;
 			}
 			
+			if(definition.isReadOnly()){
+				throw new NotSupportedException("dubbo xa transaction not supported ReadOnly.");
+			}
 			if(definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED){
-				throw new NotSupportedException("dubbo xa transaction not supported PROPAGATION_NESTED.");
+				throw new NestedTransactionNotSupportedException("dubbo xa transaction not supported PROPAGATION_NESTED.");
 			}
 			if(definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW){
-				throw new NotSupportedException("dubbo xa transaction not supported PROPAGATION_REQUIRES_NEW.");
+				throw new NestedTransactionNotSupportedException("dubbo xa transaction not supported PROPAGATION_REQUIRES_NEW.");
 			}
 			
 			current.active();
@@ -118,5 +115,30 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 			current.restoreThreadLocalStatus();
 		}
 	}
+
+	@Override
+	protected boolean isExistingTransaction(Object transaction) {
+		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
+		if(current != null && current.getIsActive() != null 
+				&& current.getIsActive().booleanValue() == true){
+			XAAnnotationInfo info = XAInvocationLocal.info();
+			if(info.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NOT_SUPPORTED){
+				throw new NestedTransactionNotSupportedException(
+						"dubbo xa transaction not supported PROPAGATION_NOT_SUPPORTED.");
+			}
+			if(info.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED){
+				throw new NestedTransactionNotSupportedException(
+						"dubbo xa transaction not supported PROPAGATION_NESTED.");
+			}
+			if(info.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW){
+				throw new NestedTransactionNotSupportedException(
+						"dubbo xa transaction not supported PROPAGATION_REQUIRES_NEW.");
+			}
+			return true;
+		}
+		
+		return super.isExistingTransaction(transaction);
+	}
+	
 	
 }

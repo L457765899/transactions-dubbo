@@ -5,6 +5,8 @@ public class XAAnnotationInfo {
 	private boolean useXA = false;
 	
 	private boolean noXA = false;
+	
+	private int propagationBehavior = -1;
 
 	public boolean isUseXA() {
 		return useXA;
@@ -20,5 +22,13 @@ public class XAAnnotationInfo {
 
 	public void setNoXA(boolean noXA) {
 		this.noXA = noXA;
+	}
+
+	public int getPropagationBehavior() {
+		return propagationBehavior;
+	}
+
+	public void setPropagationBehavior(int propagationBehavior) {
+		this.propagationBehavior = propagationBehavior;
 	}
 }

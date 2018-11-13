@@ -20,6 +20,7 @@ public class TransactionAttributeSourceProxy implements TransactionAttributeSour
 				XAInvocationLocal xaInvocationLocal = new XAInvocationLocal();
 				xaInvocationLocal.setMethod(method);
 				xaInvocationLocal.setTargetClass(targetClass);
+				xaInvocationLocal.setPropagationBehavior(propagationBehavior);
 				xaInvocationLocal.bindToThread();
 			}
 		}

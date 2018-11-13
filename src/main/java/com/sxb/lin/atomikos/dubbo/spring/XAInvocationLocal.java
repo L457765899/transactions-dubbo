@@ -22,6 +22,7 @@ public class XAInvocationLocal {
 		XAInvocationLocal current = XAInvocationLocal.current();
 		XAAnnotationInfo info = new XAAnnotationInfo();
 		if(current != null){
+			info.setPropagationBehavior(current.getPropagationBehavior());
 			Method method = current.getMethod();
 			try {
 				Method methodImpl = current.getTargetClass().getMethod(method.getName(), method.getParameterTypes());
@@ -46,6 +47,8 @@ public class XAInvocationLocal {
 	private Method method;
 	
 	private Class<?> targetClass;
+	
+	private int propagationBehavior = -1;
 
 	public Method getMethod() {
 		return method;
@@ -69,5 +72,13 @@ public class XAInvocationLocal {
 	
 	public void clear(){
 		CURRENT_LOCAL.remove();
+	}
+
+	public int getPropagationBehavior() {
+		return propagationBehavior;
+	}
+
+	public void setPropagationBehavior(int propagationBehavior) {
+		this.propagationBehavior = propagationBehavior;
 	}
 }

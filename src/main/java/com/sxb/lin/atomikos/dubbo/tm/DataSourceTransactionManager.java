@@ -60,19 +60,15 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 				boolean isActive = definition.isReadOnly() ? false : true;
 				this.doBegin(transaction, definition, isActive, info.isUseXA());
 			}else{
-				if(definition.isReadOnly()){
-					if(current.isActive()){
-						throw new NotSupportedException("dubbo xa transaction not supported ReadOnly.");
-					}
-					this.doBegin(transaction, definition, false, info.isUseXA());
-					return;
-				}
-				
 				if(current.getIsActive() != null && current.getIsActive().booleanValue() == false){
-					this.doBegin(transaction, definition, true, info.isUseXA());
+					boolean isActive = definition.isReadOnly() ? false : true;
+					this.doBegin(transaction, definition, isActive, info.isUseXA());
 					return;
 				}
 				
+				if(definition.isReadOnly()){
+					throw new NotSupportedException("dubbo xa transaction not supported ReadOnly.");
+				}
 				if(definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED){
 					throw new NestedTransactionNotSupportedException("dubbo xa transaction not supported PROPAGATION_NESTED.");
 				}
@@ -252,9 +248,13 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 		}
 		
 		JdbcTransactionObjectSupport transaction = (JdbcTransactionObjectSupport) status.getTransaction();
+		if(!status.isNewTransaction()) {
+			return;
+		}
+		
 		XADataSource xaDataSource = (XADataSource) this.getDataSource();
 		Object resource = TransactionSynchronizationManager.getResource(xaDataSource);
-		if(status.isNewTransaction() && resource == null){
+		if(resource == null){
 			ConnectionHandle connectionHandle = new ConnectionHandle(){
 				public Connection getConnection() {
 					return null;
@@ -263,10 +263,10 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 				}
 			};
 			ConnectionHolder holder = new ConnectionHolder(connectionHandle);
-			transaction.setConnectionHolder(holder);
+			transaction.setConnectionHolder(holder);//set for status.isGlobalRollbackOnly()
 		}else if(resource instanceof XAConnectionHolder){
 			XAConnectionHolder holder = (XAConnectionHolder) resource;
-			transaction.setConnectionHolder(holder);
+			transaction.setConnectionHolder(holder);//set for status.isGlobalRollbackOnly()
 		}
 	}
 
@@ -311,6 +311,25 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 	
 	@Override
 	protected boolean isExistingTransaction(Object transaction) {
+		ParticipantXATransactionLocal current = ParticipantXATransactionLocal.current();
+		if(current != null && current.getIsActive() != null 
+				&& current.getIsActive().booleanValue() == true){
+			XAAnnotationInfo info = XAInvocationLocal.info();
+			if(info.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NOT_SUPPORTED){
+				throw new NestedTransactionNotSupportedException(
+						"dubbo xa transaction not supported PROPAGATION_NOT_SUPPORTED.");
+			}
+			if(info.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED){
+				throw new NestedTransactionNotSupportedException(
+						"dubbo xa transaction not supported PROPAGATION_NESTED.");
+			}
+			if(info.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW){
+				throw new NestedTransactionNotSupportedException(
+						"dubbo xa transaction not supported PROPAGATION_REQUIRES_NEW.");
+			}
+			return true;
+		}
+		
 		if(this.isUseInitiatorXATransactionLocal()){
 			try {
 				return userTransaction.getStatus() != Status.STATUS_NO_TRANSACTION;
