@@ -171,6 +171,46 @@ dubbo项目基于atomikos的分布式事务管理
     }
 ```
 
+如果使用声明式，可以使用以下配置
+
+```java
+    @Bean
+    @Autowired
+    public DefaultPointcutAdvisor defaultPointcutAdvisor(PlatformTransactionManager transactionManager){
+        AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
+        pointcut.setExpression("execution(* service.impl..*(..))");
+        
+        Properties attributes = new Properties();
+        attributes.setProperty("add*", "PROPAGATION_REQUIRED,-Exception");
+        attributes.setProperty("save*", "PROPAGATION_REQUIRED,-Exception");
+        attributes.setProperty("update*", "PROPAGATION_REQUIRED,-Exception");
+        attributes.setProperty("edit*", "PROPAGATION_REQUIRED,-Exception");
+        attributes.setProperty("delete*", "PROPAGATION_REQUIRED,-Exception");
+        attributes.setProperty("remove*", "PROPAGATION_REQUIRED,-Exception");
+        
+        attributes.setProperty("get*", "PROPAGATION_REQUIRED,readOnly");
+        attributes.setProperty("find*", "PROPAGATION_REQUIRED,readOnly");
+        attributes.setProperty("load*", "PROPAGATION_REQUIRED,readOnly");
+        attributes.setProperty("search*", "PROPAGATION_REQUIRED,readOnly");
+        attributes.setProperty("select*", "PROPAGATION_REQUIRED,readOnly");
+        attributes.setProperty("check*", "PROPAGATION_REQUIRED,readOnly");
+        TransactionInterceptor advice = new TransactionInterceptor(transactionManager, attributes);
+        
+	//加此TransactionAttributeSource代理的目的，确保可以扫描到注解@XA @NOXA
+        TransactionAttributeSource transactionAttributeSource = advice.getTransactionAttributeSource();
+        TransactionAttributeSourceProxy transactionAttributeSourceProxy = new TransactionAttributeSourceProxy();
+        transactionAttributeSourceProxy.setTransactionAttributeSource(transactionAttributeSource);
+        advice.setTransactionAttributeSource(transactionAttributeSourceProxy);
+        
+        DefaultPointcutAdvisor advisor = new DefaultPointcutAdvisor();
+        advisor.setPointcut(pointcut);
+        advisor.setAdvice(advice);
+        advisor.setOrder(Ordered.LOWEST_PRECEDENCE);
+        
+        return advisor;
+    }
+```
+
 #### 3.SqlSessionFactory配置
 
 ```java
@@ -201,6 +241,7 @@ dubbo项目基于atomikos的分布式事务管理
       	@Qualifier("dataSource2") DataSource ds2,
 	TransactionInterceptor transactionInterceptor){
 		
+	//加此TransactionAttributeSource代理的目的，确保可以扫描到注解@XA @NOXA
 	TransactionAttributeSource transactionAttributeSource = transactionInterceptor.getTransactionAttributeSource();
     	TransactionAttributeSourceProxy transactionAttributeSourceProxy = new TransactionAttributeSourceProxy();
 
