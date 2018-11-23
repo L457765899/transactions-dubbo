@@ -22,8 +22,10 @@ public class XAInvocationLocal {
 		XAInvocationLocal current = XAInvocationLocal.current();
 		XAAnnotationInfo info = new XAAnnotationInfo();
 		if(current != null){
-			info.setPropagationBehavior(current.getPropagationBehavior());
 			Method method = current.getMethod();
+			info.setPropagationBehavior(current.getPropagationBehavior());
+			info.setClassName(current.getTargetClass().getSimpleName());
+			info.setMethodName(method.getName());
 			try {
 				Method methodImpl = current.getTargetClass().getMethod(method.getName(), method.getParameterTypes());
 				XA xaAnnotation = methodImpl.getAnnotation(XA.class);

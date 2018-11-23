@@ -45,7 +45,10 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 			}
 			
 			if(definition.isReadOnly()){
-				throw new NotSupportedException("dubbo xa transaction not supported ReadOnly.");
+				this.doJtaBegin(txObject, definition, false);
+				logger.warn("class " + info.getClassName() + "method " + info.getMethodName() 
+				+ " skip xa transaction use local transaction,dubbo xa transaction not supported ReadOnly.");
+				return;
 			}
 			if(definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED){
 				throw new NestedTransactionNotSupportedException("dubbo xa transaction not supported PROPAGATION_NESTED.");
