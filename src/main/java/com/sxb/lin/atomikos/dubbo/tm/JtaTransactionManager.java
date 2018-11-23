@@ -46,7 +46,7 @@ public class JtaTransactionManager extends org.springframework.transaction.jta.J
 			
 			if(definition.isReadOnly()){
 				this.doJtaBegin(txObject, definition, false);
-				logger.warn("class " + info.getClassName() + "method " + info.getMethodName() 
+				logger.warn("class " + info.getClassName() + " method " + info.getMethodName() 
 				+ " skip xa transaction use local transaction,dubbo xa transaction not supported ReadOnly.");
 				return;
 			}

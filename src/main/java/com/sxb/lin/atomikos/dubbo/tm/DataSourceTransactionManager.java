@@ -68,7 +68,7 @@ public class DataSourceTransactionManager extends org.springframework.jdbc.datas
 				
 				if(definition.isReadOnly()){
 					this.doBegin(transaction, definition, false, info.isUseXA());
-					logger.warn("class " + info.getClassName() + "method " + info.getMethodName() 
+					logger.warn("class " + info.getClassName() + " method " + info.getMethodName() 
 						+ " skip xa transaction use local transaction,dubbo xa transaction not supported ReadOnly.");
 					return;
 				}
