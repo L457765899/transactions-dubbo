@@ -280,4 +280,3 @@ dubbo项目基于atomikos的分布式事务管理
 
 ​	https://github.com/L457765899/transactions-test
 
-## QQ群：949862860
