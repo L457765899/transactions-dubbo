@@ -17,9 +17,14 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 public abstract class MQProducerUtils {
 	
+	public static MQMessagesHolder getMQMessagesHolder(MQProducerFor2PC producer) {
+		MQMessagesHolder mqmHolder = (MQMessagesHolder) TransactionSynchronizationManager.getResource(producer);
+		return mqmHolder;
+	}
+	
 	public static MQMessagesHolder getMQMessagesHolderToLocal(MQProducerFor2PC producer, boolean async, boolean beforeCommit){
 		
-		MQMessagesHolder mqmHolder = (MQMessagesHolder) TransactionSynchronizationManager.getResource(producer);
+		MQMessagesHolder mqmHolder = getMQMessagesHolder(producer);
 		if(mqmHolder != null){
 			return mqmHolder;
 		}
@@ -34,7 +39,7 @@ public abstract class MQProducerUtils {
 	
 	public static MQMessagesHolder getMQMessagesHolderToDubbo(MQProducerFor2PC producer,boolean async){
 		
-		MQMessagesHolder mqmHolder = (MQMessagesHolder) TransactionSynchronizationManager.getResource(producer);
+		MQMessagesHolder mqmHolder = getMQMessagesHolder(producer);
 		if(mqmHolder != null){
 			return mqmHolder;
 		}

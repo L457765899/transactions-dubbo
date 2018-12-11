@@ -21,6 +21,10 @@ public class MQMessagesHolder extends ResourceHolderSupport{
 	public void addMessage(Message msg){
 		this.messages.add(msg);
 	}
+	
+	public void removeMessage(Message msg){
+		this.messages.remove(msg);
+	}
 
 	@Override
 	public void reset() {

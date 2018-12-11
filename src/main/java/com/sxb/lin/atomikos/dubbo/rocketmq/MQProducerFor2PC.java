@@ -19,6 +19,7 @@ import com.atomikos.icatch.CompositeTransactionManager;
 import com.atomikos.icatch.config.Configuration;
 import com.atomikos.icatch.jta.TransactionManagerImp;
 import com.atomikos.icatch.provider.TransactionServiceProvider;
+import com.sxb.lin.atomikos.dubbo.AtomikosDubboException;
 import com.sxb.lin.atomikos.dubbo.ParticipantXATransactionLocal;
 import com.sxb.lin.atomikos.dubbo.pool.MQXAResourceHolder;
 import com.sxb.lin.atomikos.dubbo.pool.XAResourceHolder;
@@ -66,6 +67,22 @@ public class MQProducerFor2PC extends TransactionMQProducer{
 			
 			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToLocal(this, async, beforeCommit);
 			mqMessagesHolder.addMessage(msg);
+		}
+	}
+	
+	/**
+	 * only support 1PC
+	 * @param msgs
+	 */
+	public void removeMessageBeforeSend(Message... msgs) {
+		if(msgs != null && msgs.length > 0) {
+			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolder(this);
+			if(mqMessagesHolder == null) {
+				throw new AtomikosDubboException("can not remove message.");
+			}
+			for(Message msg : msgs) {
+				mqMessagesHolder.removeMessage(msg);
+			}
 		}
 	}
 
