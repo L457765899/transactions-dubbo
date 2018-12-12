@@ -22,7 +22,7 @@ public abstract class MQProducerUtils {
 		return mqmHolder;
 	}
 	
-	public static MQMessagesHolder getMQMessagesHolderToLocal(MQProducerFor2PC producer, boolean async, boolean beforeCommit){
+	public static MQMessagesHolder getMQMessagesHolderToLocal(MQProducerFor2PC producer){
 		
 		MQMessagesHolder mqmHolder = getMQMessagesHolder(producer);
 		if(mqmHolder != null){
@@ -30,14 +30,12 @@ public abstract class MQProducerUtils {
 		}
 		
 		mqmHolder = new MQMessagesHolder();
-		mqmHolder.setAsync(async);
-		mqmHolder.setBeforeCommit(beforeCommit);
 		TransactionSynchronizationManager.registerSynchronization(new LocalMQMessagesSynchronization(producer, mqmHolder));
 		TransactionSynchronizationManager.bindResource(producer, mqmHolder);
 		return mqmHolder;
 	}
 	
-	public static MQMessagesHolder getMQMessagesHolderToDubbo(MQProducerFor2PC producer,boolean async){
+	public static MQMessagesHolder getMQMessagesHolderToDubbo(MQProducerFor2PC producer){
 		
 		MQMessagesHolder mqmHolder = getMQMessagesHolder(producer);
 		if(mqmHolder != null){
@@ -45,76 +43,145 @@ public abstract class MQProducerUtils {
 		}
 		
 		mqmHolder = new MQMessagesHolder();
-		mqmHolder.setAsync(async);
 		TransactionSynchronizationManager.registerSynchronization(new DubboMQMessagesSynchronization(producer));
 		TransactionSynchronizationManager.bindResource(producer, mqmHolder);
 		return mqmHolder;
 	}
 	
-	public static void send(MQProducerFor2PC producer, MQMessagesHolder mqmHolder){
+	public static void sendAsync(MQProducerFor2PC producer, final Message msg) {
+		final MQMessagesSendLog messagesSendLog = producer.getMessagesSendLog();
+		try {
+			producer.send(msg, new SendCallback() {
+				
+				public void onSuccess(SendResult sendResult) {
+					messagesSendLog.sendSuccess(msg, sendResult);
+				}
+				
+				public void onException(Throwable e) {
+					messagesSendLog.sendAsyncOnException(msg, e);
+				}
+				
+			});
+		} catch (MQClientException e) {
+			messagesSendLog.sendOnException(msg, e);
+			throw new RuntimeException(e);
+		} catch (RemotingException e) {
+			messagesSendLog.sendOnException(msg, e);
+			throw new RuntimeException(e);
+		} catch (InterruptedException e) {
+			messagesSendLog.sendOnException(msg, e);
+			throw new RuntimeException(e);
+		}
+	}
+	
+	public static void send(MQProducerFor2PC producer, Message msg) {
+		MQMessagesSendLog messagesSendLog = producer.getMessagesSendLog();
+		try {
+			SendResult sendResult = producer.send(msg);
+			messagesSendLog.sendSuccess(msg, sendResult);
+		} catch (MQClientException e) {
+			messagesSendLog.sendOnException(msg, e);
+			throw new RuntimeException(e);
+		} catch (RemotingException e) {
+			messagesSendLog.sendOnException(msg, e);
+			throw new RuntimeException(e);
+		} catch (MQBrokerException e) {
+			messagesSendLog.sendOnException(msg, e);
+			throw new RuntimeException(e);
+		} catch (InterruptedException e) {
+			messagesSendLog.sendOnException(msg, e);
+			throw new RuntimeException(e);
+		}
+	}
+	
+	public static void send(MQProducerFor2PC producer, List<Message> msgs) {
+		MQMessagesSendLog messagesSendLog = producer.getMessagesSendLog();
+		try {
+			SendResult sendResult = producer.send(msgs);
+			messagesSendLog.sendSuccess(msgs, sendResult);
+		} catch (MQClientException e) {
+			messagesSendLog.sendOnException(msgs, e);
+			throw new RuntimeException(e);
+		} catch (RemotingException e) {
+			messagesSendLog.sendOnException(msgs, e);
+			throw new RuntimeException(e);
+		} catch (MQBrokerException e) {
+			messagesSendLog.sendOnException(msgs, e);
+			throw new RuntimeException(e);
+		} catch (InterruptedException e) {
+			messagesSendLog.sendOnException(msgs, e);
+			throw new RuntimeException(e);
+		}
+	}
+	
+	public static void sendBeforeCommit(MQProducerFor2PC producer, MQMessagesHolder mqmHolder){
 		if(!mqmHolder.isEmpty()){
-			List<Message> messages = mqmHolder.getMessages();
-			final MQMessagesSendLog messagesSendLog = producer.getMessagesSendLog();
-			if(mqmHolder.isAsync()){
-				for(final Message msg : messages){
-					try {
-						producer.send(msg, new SendCallback() {
-							
-							public void onSuccess(SendResult sendResult) {
-								messagesSendLog.sendSuccess(msg, sendResult);
-							}
-							
-							public void onException(Throwable e) {
-								messagesSendLog.sendAsyncOnException(msg, e);
-							}
-							
-						});
-					} catch (MQClientException e) {
-						messagesSendLog.sendOnException(msg, e);
-						throw new RuntimeException(e);
-					} catch (RemotingException e) {
-						messagesSendLog.sendOnException(msg, e);
-						throw new RuntimeException(e);
-					} catch (InterruptedException e) {
-						messagesSendLog.sendOnException(msg, e);
-						throw new RuntimeException(e);
+			List<MQMessageHolder> messages = mqmHolder.getMessages();
+			Map<String,List<Message>> topicMap = new HashMap<String, List<Message>>();
+			
+			for(MQMessageHolder msgHolder : messages) {
+				if(!msgHolder.isBeforeCommit()) {
+					continue;
+				}
+				
+				mqmHolder.removeMessage(msgHolder);
+				Message msg = msgHolder.getMessage();
+				
+				if(msgHolder.isAsync()) {
+					sendAsync(producer, msg);
+				}else {
+					String topic = msg.getTopic();
+					List<Message> list = topicMap.get(topic);
+					if(list == null){
+						list = new ArrayList<Message>();
+						topicMap.put(topic, list);
+					}
+					list.add(msg);
+				}
+			}
+			
+			if(topicMap.size() > 0) {
+				for(List<Message> list : topicMap.values()){
+					if(list.size() == 1) {
+						send(producer, list.get(0));
+					}else {
+						send(producer, list);
 					}
 				}
-			}else{
-				try {
-					SendResult sendResult = null;
-					if(messages.size() == 1){
-						Message msg = messages.get(0);
-						sendResult = producer.send(msg);
-						messagesSendLog.sendSuccess(msg, sendResult);
-					} else{
-						Map<String,List<Message>> topicMap = new HashMap<String, List<Message>>();
-						for(Message msg : messages){
-							String topic = msg.getTopic();
-							List<Message> list = topicMap.get(topic);
-							if(list == null){
-								list = new ArrayList<Message>();
-								topicMap.put(topic, list);
-							}
-							list.add(msg);
-						}
-						for(List<Message> list : topicMap.values()){
-							sendResult = producer.send(list);
-							messagesSendLog.sendSuccess(list, sendResult);
-						}
+			}
+		}
+	}
+	
+	public static void sendAfterCommit(MQProducerFor2PC producer, MQMessagesHolder mqmHolder){
+		if(!mqmHolder.isEmpty()){
+			List<MQMessageHolder> messages = mqmHolder.getMessages();
+			Map<String,List<Message>> topicMap = new HashMap<String, List<Message>>();
+			
+			for(MQMessageHolder msgHolder : messages) {
+				
+				mqmHolder.removeMessage(msgHolder);
+				Message msg = msgHolder.getMessage();
+				
+				if(msgHolder.isAsync()) {
+					sendAsync(producer, msg);
+				}else {
+					String topic = msg.getTopic();
+					List<Message> list = topicMap.get(topic);
+					if(list == null){
+						list = new ArrayList<Message>();
+						topicMap.put(topic, list);
 					}
-				} catch (MQClientException e) {
-					messagesSendLog.sendOnException(messages, e);
-					throw new RuntimeException(e);
-				} catch (RemotingException e) {
-					messagesSendLog.sendOnException(messages, e);
-					throw new RuntimeException(e);
-				} catch (MQBrokerException e) {
-					messagesSendLog.sendOnException(messages, e);
-					throw new RuntimeException(e);
-				} catch (InterruptedException e) {
-					messagesSendLog.sendOnException(messages, e);
-					throw new RuntimeException(e);
+					list.add(msg);
+				}
+			}
+			
+			if(topicMap.size() > 0) {
+				for(List<Message> list : topicMap.values()){
+					if(list.size() == 1) {
+						send(producer, list.get(0));
+					}else {
+						send(producer, list);
+					}
 				}
 			}
 		}
@@ -155,9 +222,7 @@ public abstract class MQProducerUtils {
 		
 		@Override
 		public void beforeCommit(boolean readOnly) {
-			if(this.mqmHolder.isBeforeCommit()){
-				send(this.producer, this.mqmHolder);
-			}
+			sendBeforeCommit(this.producer, this.mqmHolder);
 		}
 
 		@Override
@@ -168,9 +233,7 @@ public abstract class MQProducerUtils {
 		
 		@Override
 		public void afterCommit() {
-			if(!this.mqmHolder.isBeforeCommit()){
-				send(this.producer, this.mqmHolder);
-			}
+			sendAfterCommit(this.producer, this.mqmHolder);
 		}
 
 		@Override

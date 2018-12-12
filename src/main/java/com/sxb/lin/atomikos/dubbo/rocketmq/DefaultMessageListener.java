@@ -31,7 +31,7 @@ public class DefaultMessageListener implements MessageListenerConcurrently,Messa
 			publisher.publishEvent(event);
 			return ConsumeOrderlyStatus.SUCCESS;
 		} catch (Throwable e) {
-			LOGGER.error(event.getFirstMsgId() + ":" + e.getMessage(), e);
+			this.printLog(event, e);
 		}
 		
 		return ConsumeOrderlyStatus.SUSPEND_CURRENT_QUEUE_A_MOMENT;
@@ -45,10 +45,13 @@ public class DefaultMessageListener implements MessageListenerConcurrently,Messa
 			publisher.publishEvent(event);
 			return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
 		} catch (Throwable e) {
-			LOGGER.error(event.getFirstMsgId() + ":" + e.getMessage(), e);
+			this.printLog(event, e);
 		}
 		
 		return ConsumeConcurrentlyStatus.RECONSUME_LATER;
 	}
 
+	protected void printLog(MQEvent event, Throwable e) {
+		LOGGER.error(event.getFirstMsgId() + ":" + e.getMessage(), e);
+	}
 }

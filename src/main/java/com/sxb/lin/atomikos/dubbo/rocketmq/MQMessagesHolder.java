@@ -8,30 +8,36 @@ import org.springframework.transaction.support.ResourceHolderSupport;
 
 public class MQMessagesHolder extends ResourceHolderSupport{
 
-	private List<Message> messages;
-	
-	private boolean async;
-	
-	private boolean beforeCommit;
+	private List<MQMessageHolder> messages;
 
 	public MQMessagesHolder() {
-		this.messages = new ArrayList<Message>();
+		this.messages = new ArrayList<MQMessageHolder>();
 	}
 	
-	public void addMessage(Message msg){
-		this.messages.add(msg);
+	public void addMessage(Message msg, boolean async, boolean beforeCommit){
+		MQMessageHolder msgHolder = new MQMessageHolder();
+		msgHolder.setMessage(msg);
+		msgHolder.setAsync(async);
+		msgHolder.setBeforeCommit(beforeCommit);
+		this.messages.add(msgHolder);
 	}
 	
 	public void removeMessage(Message msg){
-		this.messages.remove(msg);
+		for(MQMessageHolder msgHolder : messages) {
+			if(msgHolder.getMessage() == msg) {
+				this.messages.remove(msgHolder);
+			}
+		}
+	}
+	
+	public void removeMessage(MQMessageHolder msgHolder){
+		this.messages.remove(msgHolder);
 	}
 
 	@Override
 	public void reset() {
 		super.reset();
 		messages = null;
-		async = false;
-		beforeCommit = false;
 	}
 	
 	public boolean isEmpty(){
@@ -42,24 +48,7 @@ public class MQMessagesHolder extends ResourceHolderSupport{
 		return false;
 	}
 
-	public List<Message> getMessages() {
+	public List<MQMessageHolder> getMessages() {
 		return messages;
 	}
-
-	public boolean isAsync() {
-		return async;
-	}
-
-	public void setAsync(boolean async) {
-		this.async = async;
-	}
-
-	public boolean isBeforeCommit() {
-		return beforeCommit;
-	}
-
-	public void setBeforeCommit(boolean beforeCommit) {
-		this.beforeCommit = beforeCommit;
-	}
-	
 }

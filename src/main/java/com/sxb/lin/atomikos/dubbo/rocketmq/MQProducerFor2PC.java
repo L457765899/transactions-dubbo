@@ -47,8 +47,8 @@ public class MQProducerFor2PC extends TransactionMQProducer{
 	
 	protected void send1PCMessageInTransaction(Message msg, boolean async, boolean beforeCommit){
 		if(ParticipantXATransactionLocal.isUseParticipantXATransaction()){
-			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToDubbo(this, async);
-			mqMessagesHolder.addMessage(msg);
+			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToDubbo(this);
+			mqMessagesHolder.addMessage(msg, async, beforeCommit);
 			
 			XAResource xaResource = new MQNOResourceImpl(this, mqMessagesHolder);
 			XAResourceHolder xaResourceHolder = new MQXAResourceHolder(
@@ -65,8 +65,8 @@ public class MQProducerFor2PC extends TransactionMQProducer{
 				throw new RuntimeException("transaction not start.");
 			}
 			
-			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToLocal(this, async, beforeCommit);
-			mqMessagesHolder.addMessage(msg);
+			MQMessagesHolder mqMessagesHolder = MQProducerUtils.getMQMessagesHolderToLocal(this);
+			mqMessagesHolder.addMessage(msg, async, beforeCommit);
 		}
 	}
 	

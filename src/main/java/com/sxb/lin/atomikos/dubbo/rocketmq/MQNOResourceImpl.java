@@ -20,7 +20,7 @@ public class MQNOResourceImpl implements XAResource{
 	}
 
 	public void commit(Xid xid, boolean onePhase) throws XAException {
-		MQProducerUtils.send(this.producer, this.mqmHolder);
+		MQProducerUtils.sendAfterCommit(this.producer, this.mqmHolder);
 	}
 	
 	public void rollback(Xid xid) throws XAException {

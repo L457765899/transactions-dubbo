@@ -78,9 +78,17 @@ public class MQEvent extends ApplicationEvent {
 		this.isOrder = isOrder;
 	}
 	
-	public String getFirstMsgId() {
+	public MessageExt getFirstMsg() {
 		if(msgs != null && msgs.size() > 0) {
-			return msgs.get(0).getMsgId();
+			return msgs.get(0);
+		}
+		return null;
+	}
+	
+	public String getFirstMsgId() {
+		MessageExt firstMsg = this.getFirstMsg();
+		if(firstMsg != null) {
+			return firstMsg.getMsgId();
 		}
 		return null;
 	}
