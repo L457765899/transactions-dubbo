@@ -74,11 +74,12 @@ public abstract class MQProducerUtils {
 		}
 	}
 	
-	public static void send(MQProducerFor2PC producer, Message msg) {
+	public static SendResult send(MQProducerFor2PC producer, Message msg) {
 		MQMessagesSendLog messagesSendLog = producer.getMessagesSendLog();
 		try {
 			SendResult sendResult = producer.send(msg);
 			messagesSendLog.sendSuccess(msg, sendResult);
+			return sendResult;
 		} catch (MQClientException e) {
 			messagesSendLog.sendOnException(msg, e);
 			throw new RuntimeException(e);
@@ -94,11 +95,12 @@ public abstract class MQProducerUtils {
 		}
 	}
 	
-	public static void send(MQProducerFor2PC producer, List<Message> msgs) {
+	public static SendResult send(MQProducerFor2PC producer, List<Message> msgs) {
 		MQMessagesSendLog messagesSendLog = producer.getMessagesSendLog();
 		try {
 			SendResult sendResult = producer.send(msgs);
 			messagesSendLog.sendSuccess(msgs, sendResult);
+			return sendResult;
 		} catch (MQClientException e) {
 			messagesSendLog.sendOnException(msgs, e);
 			throw new RuntimeException(e);
