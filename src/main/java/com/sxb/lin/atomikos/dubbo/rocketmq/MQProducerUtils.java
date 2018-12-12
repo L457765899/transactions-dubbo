@@ -118,13 +118,14 @@ public abstract class MQProducerUtils {
 		if(!mqmHolder.isEmpty()){
 			List<MQMessageHolder> messages = mqmHolder.getMessages();
 			Map<String,List<Message>> topicMap = new HashMap<String, List<Message>>();
+			List<MQMessageHolder> removeMessages = new ArrayList<MQMessageHolder>();
 			
 			for(MQMessageHolder msgHolder : messages) {
 				if(!msgHolder.isBeforeCommit()) {
 					continue;
 				}
 				
-				mqmHolder.removeMessage(msgHolder);
+				removeMessages.add(msgHolder);
 				Message msg = msgHolder.getMessage();
 				
 				if(msgHolder.isAsync()) {
@@ -138,6 +139,10 @@ public abstract class MQProducerUtils {
 					}
 					list.add(msg);
 				}
+			}
+			
+			if(removeMessages.size() > 0) {
+				mqmHolder.removeMessage(removeMessages);
 			}
 			
 			if(topicMap.size() > 0) {
@@ -158,10 +163,7 @@ public abstract class MQProducerUtils {
 			Map<String,List<Message>> topicMap = new HashMap<String, List<Message>>();
 			
 			for(MQMessageHolder msgHolder : messages) {
-				
-				mqmHolder.removeMessage(msgHolder);
 				Message msg = msgHolder.getMessage();
-				
 				if(msgHolder.isAsync()) {
 					sendAsync(producer, msg);
 				}else {

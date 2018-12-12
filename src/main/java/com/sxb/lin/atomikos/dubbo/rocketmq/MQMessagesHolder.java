@@ -30,8 +30,8 @@ public class MQMessagesHolder extends ResourceHolderSupport{
 		}
 	}
 	
-	public void removeMessage(MQMessageHolder msgHolder){
-		this.messages.remove(msgHolder);
+	public void removeMessage(List<MQMessageHolder> msgHolders){
+		this.messages.removeAll(msgHolders);
 	}
 
 	@Override
