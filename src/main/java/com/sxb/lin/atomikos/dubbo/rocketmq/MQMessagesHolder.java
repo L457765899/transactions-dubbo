@@ -23,10 +23,14 @@ public class MQMessagesHolder extends ResourceHolderSupport{
 	}
 	
 	public void removeMessage(Message msg){
+		List<MQMessageHolder> removes = new ArrayList<MQMessageHolder>();
 		for(MQMessageHolder msgHolder : messages) {
 			if(msgHolder.getMessage() == msg) {
-				this.messages.remove(msgHolder);
+				removes.add(msgHolder);
 			}
+		}
+		if(removes.size() > 0) {
+			this.messages.removeAll(removes);
 		}
 	}
 	
