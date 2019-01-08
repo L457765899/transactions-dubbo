@@ -110,7 +110,13 @@ public class DubboTransactionManagerServiceProxy implements DubboTransactionMana
         	serviceConfig.setLoadbalance(config.getServiceLoadbalance());
         }else{
         	String loadbalance = config.getProviderConfig().getLoadbalance();
-        	if(loadbalance == null || !loadbalance.equals("sticky_roundrobin")){
+        	if(StringUtils.hasLength(loadbalance)) {
+        		if(loadbalance.startsWith("sticky_")) {
+            		serviceConfig.setLoadbalance(loadbalance);
+            	}else {
+            		serviceConfig.setLoadbalance("sticky_" + loadbalance);
+            	}
+        	}else {
         		serviceConfig.setLoadbalance("sticky_roundrobin");
         	}
         }
