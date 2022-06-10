@@ -13,7 +13,7 @@
 	<properties>
 		<atomikos.version>4.0.6</atomikos.version>
 		<javax.transaction.api.version>1.2</javax.transaction.api.version>
-		<dubbo.version>2.5.10</dubbo.version>
+		<dubbo.version>2.6.12</dubbo.version>
 		<slf4j.api.version>1.7.25</slf4j.api.version>
 		<spring.version>4.3.14.RELEASE</spring.version>
 		<mybatis.version>3.4.6</mybatis.version>
